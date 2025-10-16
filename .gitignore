@@ -1,0 +1,36 @@
+# Dependencias
+/vendor/
+composer.lock
+
+# Archivos de configuración sensibles
+/config/database.php
+/config/email.php
+
+# Uploads
+/public/uploads/*
+!/public/uploads/.gitkeep
+!/public/uploads/profiles/.gitkeep
+!/public/uploads/vehicles/.gitkeep
+
+# Logs
+/logs/*.log
+!/logs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+
+# Temporal
+tmp/
+temp/
