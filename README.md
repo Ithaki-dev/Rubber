@@ -43,6 +43,36 @@ Sistema web que permite a choferes ofrecer viajes y a pasajeros reservar espacio
 
 ## 🚀 Instalación
 
+### Opción A: Con XAMPP (Recomendado para desarrollo)
+
+📘 **[Ver guía completa de XAMPP](CONFIGURACION_XAMPP.md)**
+
+#### Pasos rápidos:
+
+1. **Iniciar XAMPP**
+   - Iniciar Apache y MySQL
+
+2. **Configurar Base de Datos en phpMyAdmin**
+   - Acceder a http://localhost/phpmyadmin
+   - Crear base de datos `carpooling_db`
+   - Importar `sql/schema.sql`
+   - (Opcional) Importar `sql/seed.sql`
+
+3. **Instalar dependencias**
+   ```bash
+   composer install
+   ```
+
+4. **Configurar archivos**
+   - Editar `config/database.php` (usar root sin password)
+   - Editar `config/email.php` (usar Mailtrap.io)
+
+5. **Acceder a la aplicación**
+   - http://localhost/rubber (si está en htdocs)
+   - o configurar Virtual Host
+
+### Opción B: Con MySQL Standalone
+
 ### 1. Clonar el repositorio
 
 ```bash
