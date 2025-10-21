@@ -1,264 +1,74 @@
 <?php
 /**
- * Clase Email - Servicio de envío de correos usando PHPMailer
+ * Clase Email - Servicio de envío usando Testmail.app API
  */
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 class Email {
-    private $mailer;
+    private $namespace;
+    private $apiKey;
+    private $apiUrl;
 
-    /**
-     * Constructor
-     */
     public function __construct() {
-        $this->mailer = new PHPMailer(true);
-        $this->configure();
+        $this->namespace = defined('TESTMAIL_NAMESPACE') ? TESTMAIL_NAMESPACE : '';
+        $this->apiKey = defined('TESTMAIL_API_KEY') ? TESTMAIL_API_KEY : '';
+        $this->apiUrl = defined('TESTMAIL_API_URL') ? TESTMAIL_API_URL : '';
     }
 
-    /**
-     * Configurar PHPMailer
-     */
-    private function configure() {
+    private function sendEmail($to, $subject, $htmlBody, $textBody = '') {
+        // Si API no está configurada, solo simular
+        if (empty($this->apiKey)) {
+            error_log("Email simulado - To: $to | Subject: $subject");
+            return true; // Retornar true para no romper el flujo
+        }
+
         try {
-            // Configuración del servidor SMTP
-            $this->mailer->isSMTP();
-            $this->mailer->Host = SMTP_HOST;
-            $this->mailer->SMTPAuth = true;
-            $this->mailer->Username = SMTP_USER;
-            $this->mailer->Password = SMTP_PASS;
-            $this->mailer->SMTPSecure = SMTP_SECURE;
-            $this->mailer->Port = SMTP_PORT;
+            if (strpos($to, '@') === false) {
+                $to = $to . '@' . $this->namespace . '.testmail.app';
+            }
             
-            // Configuración del remitente
-            $this->mailer->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-            
-            // Configuración general
-            $this->mailer->CharSet = 'UTF-8';
-            $this->mailer->isHTML(true);
+            $data = [
+                'to' => $to,
+                'from' => SMTP_FROM_EMAIL,
+                'from_name' => SMTP_FROM_NAME,
+                'subject' => $subject,
+                'html' => $htmlBody,
+                'text' => $textBody ?: strip_tags($htmlBody)
+            ];
+
+            $ch = curl_init($this->apiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $this->apiKey
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            return ($httpCode >= 200 && $httpCode < 300);
             
         } catch (Exception $e) {
-            error_log("Error configurando PHPMailer: " . $e->getMessage());
+            error_log("Error email: " . $e->getMessage());
+            return false;
         }
     }
 
-    /**
-     * Enviar email de activación de cuenta
-     * 
-     * @param string $to Email destinatario
-     * @param string $name Nombre del usuario
-     * @param string $token Token de activación
-     * @return bool
-     */
     public function sendActivationEmail($to, $name, $token) {
-        try {
-            $this->mailer->clearAddresses();
-            $this->mailer->addAddress($to, $name);
-            
-            $this->mailer->Subject = 'Activa tu cuenta - Carpooling System';
-            
-            $activationLink = BASE_URL . "/activate.php?token=" . urlencode($token);
-            
-            $this->mailer->Body = $this->getActivationTemplate($name, $activationLink);
-            $this->mailer->AltBody = "Bienvenido $name,\n\nGracias por registrarte. Por favor activa tu cuenta visitando: $activationLink\n\nSi no solicitaste esta cuenta, ignora este correo.";
-
-            return $this->mailer->send();
-            
-        } catch (Exception $e) {
-            error_log("Error enviando email de activación: " . $this->mailer->ErrorInfo);
-            return false;
-        }
+        $link = BASE_URL . "/auth/activate?token=" . urlencode($token);
+        $html = "<h2>Bienvenido, $name!</h2><p>Activa tu cuenta: <a href='$link'>$link</a></p>";
+        return $this->sendEmail($to, 'Activa tu cuenta', $html);
     }
 
-    /**
-     * Enviar notificación de reservas pendientes al chofer
-     * 
-     * @param string $to Email del chofer
-     * @param string $driverName Nombre del chofer
-     * @param int $count Cantidad de reservas pendientes
-     * @return bool
-     */
-    public function sendPendingReservationNotification($to, $driverName, $count) {
-        try {
-            $this->mailer->clearAddresses();
-            $this->mailer->addAddress($to, $driverName);
-            
-            $this->mailer->Subject = "Tienes $count reserva(s) pendiente(s)";
-            
-            $this->mailer->Body = $this->getPendingReservationsTemplate($driverName, $count);
-            $this->mailer->AltBody = "Hola $driverName,\n\nTienes $count reserva(s) pendiente(s) de respuesta.\n\nPor favor ingresa a tu panel para aceptar o rechazar las solicitudes.\n\nVisita: " . BASE_URL;
-
-            return $this->mailer->send();
-            
-        } catch (Exception $e) {
-            error_log("Error enviando notificación de reservas: " . $this->mailer->ErrorInfo);
-            return false;
-        }
+    public function sendPendingReservationNotification($to, $name, $count) {
+        $html = "<h2>Hola, $name</h2><p>Tienes $count reserva(s) pendiente(s).</p>";
+        return $this->sendEmail($to, 'Reservas pendientes', $html);
     }
 
-    /**
-     * Enviar notificación de cambio de estado de reserva al pasajero
-     * 
-     * @param string $to Email del pasajero
-     * @param string $passengerName Nombre del pasajero
-     * @param string $status Estado de la reserva (accepted, rejected)
-     * @param string $rideName Nombre del viaje
-     * @return bool
-     */
-    public function sendReservationStatusEmail($to, $passengerName, $status, $rideName) {
-        try {
-            $this->mailer->clearAddresses();
-            $this->mailer->addAddress($to, $passengerName);
-            
-            $statusText = $status === 'accepted' ? 'aceptada' : 'rechazada';
-            $this->mailer->Subject = "Tu reserva ha sido $statusText";
-            
-            $this->mailer->Body = $this->getReservationStatusTemplate($passengerName, $status, $rideName);
-            $this->mailer->AltBody = "Hola $passengerName,\n\nTu reserva para el viaje '$rideName' ha sido $statusText.\n\nVisita tu panel para ver más detalles: " . BASE_URL;
-
-            return $this->mailer->send();
-            
-        } catch (Exception $e) {
-            error_log("Error enviando estado de reserva: " . $this->mailer->ErrorInfo);
-            return false;
-        }
-    }
-
-    /**
-     * Template HTML para email de activación
-     */
-    private function getActivationTemplate($name, $link) {
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-                .content { background-color: #f9f9f9; padding: 20px; }
-                .button { display: inline-block; padding: 12px 30px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <h1>¡Bienvenido a Carpooling!</h1>
-                </div>
-                <div class='content'>
-                    <h2>Hola $name,</h2>
-                    <p>Gracias por registrarte en nuestro sistema de carpooling.</p>
-                    <p>Para activar tu cuenta, por favor haz clic en el siguiente botón:</p>
-                    <p style='text-align: center;'>
-                        <a href='$link' class='button'>Activar Cuenta</a>
-                    </p>
-                    <p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
-                    <p style='word-break: break-all; color: #666;'>$link</p>
-                    <p>Si no solicitaste esta cuenta, puedes ignorar este correo.</p>
-                </div>
-                <div class='footer'>
-                    <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-                    <p>&copy; 2025 Carpooling System - Proyecto Universitario</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
-    }
-
-    /**
-     * Template HTML para notificación de reservas pendientes
-     */
-    private function getPendingReservationsTemplate($driverName, $count) {
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background-color: #FF9800; color: white; padding: 20px; text-align: center; }
-                .content { background-color: #f9f9f9; padding: 20px; }
-                .button { display: inline-block; padding: 12px 30px; background-color: #FF9800; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-                .highlight { background-color: #fff3cd; padding: 10px; border-left: 4px solid #FF9800; margin: 15px 0; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <h1>⏰ Reservas Pendientes</h1>
-                </div>
-                <div class='content'>
-                    <h2>Hola $driverName,</h2>
-                    <div class='highlight'>
-                        <strong>Tienes $count reserva(s) pendiente(s) de respuesta.</strong>
-                    </div>
-                    <p>Por favor ingresa a tu panel para revisar y responder a las solicitudes de reserva.</p>
-                    <p style='text-align: center;'>
-                        <a href='" . BASE_URL . "/driver/reservations.php' class='button'>Ver Reservas</a>
-                    </p>
-                    <p>Es importante que respondas pronto a tus pasajeros para que puedan planificar su viaje.</p>
-                </div>
-                <div class='footer'>
-                    <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-                    <p>&copy; 2025 Carpooling System</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
-    }
-
-    /**
-     * Template HTML para notificación de estado de reserva
-     */
-    private function getReservationStatusTemplate($passengerName, $status, $rideName) {
-        $color = $status === 'accepted' ? '#4CAF50' : '#f44336';
-        $icon = $status === 'accepted' ? '✓' : '✗';
-        $statusText = $status === 'accepted' ? 'ACEPTADA' : 'RECHAZADA';
-        $message = $status === 'accepted' 
-            ? 'Tu reserva ha sido aceptada. ¡Prepárate para tu viaje!' 
-            : 'Lamentablemente tu reserva ha sido rechazada. Puedes buscar otros viajes disponibles.';
-        
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background-color: $color; color: white; padding: 20px; text-align: center; }
-                .content { background-color: #f9f9f9; padding: 20px; }
-                .button { display: inline-block; padding: 12px 30px; background-color: $color; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <h1>$icon Reserva $statusText</h1>
-                </div>
-                <div class='content'>
-                    <h2>Hola $passengerName,</h2>
-                    <p><strong>Viaje:</strong> $rideName</p>
-                    <p>$message</p>
-                    <p style='text-align: center;'>
-                        <a href='" . BASE_URL . "/passenger/my_reservations.php' class='button'>Ver Mis Reservas</a>
-                    </p>
-                </div>
-                <div class='footer'>
-                    <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-                    <p>&copy; 2025 Carpooling System</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
+    public function sendContactEmail($adminEmail, $senderName, $senderEmail, $subject, $message) {
+        $html = "<h2>Contacto de: $senderName</h2><p>Email: $senderEmail</p><p>$message</p>";
+        return $this->sendEmail($adminEmail, "Contacto: $subject", $html);
     }
 }
