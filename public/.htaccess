@@ -3,7 +3,7 @@
 # Habilitar RewriteEngine
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
+    RewriteBase /Rubber/public/
     
     # Redirigir todo a index.php excepto archivos y directorios existentes
     RewriteCond %{REQUEST_FILENAME} !-f
