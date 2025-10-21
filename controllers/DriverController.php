@@ -16,14 +16,12 @@ class DriverController {
     private $vehicleModel;
     private $rideModel;
     private $reservationModel;
-    private $session;
     private $statistics;
     
     public function __construct() {
         $this->vehicleModel = new Vehicle();
         $this->rideModel = new Ride();
         $this->reservationModel = new Reservation();
-        $this->session = Session::getInstance();
         $this->statistics = new Statistics();
         
         // Verificar que el usuario es chofer
@@ -34,7 +32,7 @@ class DriverController {
      * Dashboard del chofer
      */
     public function dashboard() {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         
         // Obtener estadísticas del chofer
         $stats = $this->statistics->getDriverStatistics($driver_id);
@@ -60,7 +58,7 @@ class DriverController {
      * Listar vehículos del chofer
      */
     public function vehicles() {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicles = $this->vehicleModel->getByDriver($driver_id);
         
         require_once __DIR__ . '/../views/driver/vehicles/index.php';
@@ -82,7 +80,7 @@ class DriverController {
             return;
         }
         
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         
         $data = [
             'driver_id' => $driver_id,
@@ -100,8 +98,8 @@ class DriverController {
             if ($upload_result['success']) {
                 $data['photo_path'] = $upload_result['path'];
             } else {
-                $this->session->setFlash('error', $upload_result['message']);
-                $this->session->setFlash('old_input', $data);
+                Session::setFlash('error', $upload_result['message']);
+                Session::setFlash('old_input', $data);
                 redirect('/driver/vehicles/create');
                 return;
             }
@@ -110,11 +108,11 @@ class DriverController {
         $result = $this->vehicleModel->create($data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/driver/vehicles');
         } else {
-            $this->session->setFlash('error', $result['message']);
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
             redirect('/driver/vehicles/create');
         }
     }
@@ -123,12 +121,12 @@ class DriverController {
      * Mostrar formulario para editar vehículo
      */
     public function editVehicle($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicle = $this->vehicleModel->findById($id);
         
         // Verificar que el vehículo pertenece al chofer
         if (!$vehicle || $vehicle['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/driver/vehicles');
             return;
         }
@@ -145,12 +143,12 @@ class DriverController {
             return;
         }
         
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicle = $this->vehicleModel->findById($id);
         
         // Verificar que el vehículo pertenece al chofer
         if (!$vehicle || $vehicle['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/driver/vehicles');
             return;
         }
@@ -180,10 +178,10 @@ class DriverController {
         $result = $this->vehicleModel->update($id, $data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/driver/vehicles');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
             redirect('/driver/vehicles/edit/' . $id);
         }
     }
@@ -192,12 +190,12 @@ class DriverController {
      * Eliminar vehículo
      */
     public function deleteVehicle($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicle = $this->vehicleModel->findById($id);
         
         // Verificar que el vehículo pertenece al chofer
         if (!$vehicle || $vehicle['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/driver/vehicles');
             return;
         }
@@ -209,9 +207,9 @@ class DriverController {
             if (!empty($vehicle['photo_path'])) {
                 deleteFile($vehicle['photo_path']);
             }
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/driver/vehicles');
@@ -221,12 +219,12 @@ class DriverController {
      * Activar/Desactivar vehículo
      */
     public function toggleVehicle($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicle = $this->vehicleModel->findById($id);
         
         // Verificar que el vehículo pertenece al chofer
         if (!$vehicle || $vehicle['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/driver/vehicles');
             return;
         }
@@ -235,9 +233,9 @@ class DriverController {
         $result = $this->vehicleModel->toggleActive($id, $new_status);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/driver/vehicles');
@@ -251,7 +249,7 @@ class DriverController {
      * Listar viajes del chofer
      */
     public function rides() {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $filter = sanitize($_GET['filter'] ?? 'all');
         
         $filters = [];
@@ -270,12 +268,12 @@ class DriverController {
      * Mostrar formulario para crear viaje
      */
     public function createRide() {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $vehicles = $this->vehicleModel->getByDriver($driver_id, true);
         
         // Verificar que tiene vehículos activos
         if (empty($vehicles)) {
-            $this->session->setFlash('error', 'Debes tener al menos un vehículo activo para crear viajes');
+            Session::setFlash('error', 'Debes tener al menos un vehículo activo para crear viajes');
             redirect('/driver/vehicles');
             return;
         }
@@ -292,7 +290,7 @@ class DriverController {
             return;
         }
         
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         
         $data = [
             'driver_id' => $driver_id,
@@ -309,11 +307,11 @@ class DriverController {
         $result = $this->rideModel->create($data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/driver/rides');
         } else {
-            $this->session->setFlash('error', $result['message']);
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
             redirect('/driver/rides/create');
         }
     }
@@ -322,12 +320,12 @@ class DriverController {
      * Ver detalles del viaje con reservas
      */
     public function showRide($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $ride = $this->rideModel->findById($id);
         
         // Verificar que el viaje pertenece al chofer
         if (!$ride || $ride['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/driver/rides');
             return;
         }
@@ -342,12 +340,12 @@ class DriverController {
      * Mostrar formulario para editar viaje
      */
     public function editRide($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $ride = $this->rideModel->findById($id);
         
         // Verificar que el viaje pertenece al chofer
         if (!$ride || $ride['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/driver/rides');
             return;
         }
@@ -366,12 +364,12 @@ class DriverController {
             return;
         }
         
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $ride = $this->rideModel->findById($id);
         
         // Verificar que el viaje pertenece al chofer
         if (!$ride || $ride['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/driver/rides');
             return;
         }
@@ -388,10 +386,10 @@ class DriverController {
         $result = $this->rideModel->update($id, $data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/driver/rides');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
             redirect('/driver/rides/edit/' . $id);
         }
     }
@@ -400,12 +398,12 @@ class DriverController {
      * Eliminar viaje
      */
     public function deleteRide($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $ride = $this->rideModel->findById($id);
         
         // Verificar que el viaje pertenece al chofer
         if (!$ride || $ride['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/driver/rides');
             return;
         }
@@ -413,9 +411,9 @@ class DriverController {
         $result = $this->rideModel->delete($id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/driver/rides');
@@ -425,12 +423,12 @@ class DriverController {
      * Activar/Desactivar viaje
      */
     public function toggleRide($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $ride = $this->rideModel->findById($id);
         
         // Verificar que el viaje pertenece al chofer
         if (!$ride || $ride['driver_id'] != $driver_id) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/driver/rides');
             return;
         }
@@ -439,9 +437,9 @@ class DriverController {
         $result = $this->rideModel->toggleActive($id, $new_status);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/driver/rides');
@@ -455,7 +453,7 @@ class DriverController {
      * Listar reservas de los viajes del chofer
      */
     public function reservations() {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $filter = sanitize($_GET['filter'] ?? 'all');
         
         $filters = [];
@@ -472,13 +470,13 @@ class DriverController {
      * Aceptar reserva
      */
     public function acceptReservation($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $result = $this->reservationModel->accept($id, $driver_id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         // Redirigir según el origen
@@ -495,13 +493,13 @@ class DriverController {
      * Rechazar reserva
      */
     public function rejectReservation($id) {
-        $driver_id = $this->session->get('user_id');
+        $driver_id = Session::get('user_id');
         $result = $this->reservationModel->reject($id, $driver_id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         // Redirigir según el origen
@@ -518,14 +516,14 @@ class DriverController {
      * Verificar que el usuario es chofer
      */
     private function requireDriverRole() {
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;
         }
         
-        if ($this->session->get('user_type') !== 'driver') {
-            $this->session->setFlash('error', 'No tienes permiso para acceder a esta página');
+        if (Session::get('user_type') !== 'driver') {
+            Session::setFlash('error', 'No tienes permiso para acceder a esta página');
             redirect('/dashboard');
             exit;
         }

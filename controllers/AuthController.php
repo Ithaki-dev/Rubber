@@ -12,13 +12,11 @@ require_once __DIR__ . '/../core/Helpers.php';
 
 class AuthController {
     private $userModel;
-    private $session;
     private $email;
     private $validator;
     
     public function __construct() {
         $this->userModel = new User();
-        $this->session = Session::getInstance();
         $this->email = new Email();
         $this->validator = new Validator();
     }
@@ -28,7 +26,7 @@ class AuthController {
      */
     public function showRegister() {
         // Si ya está autenticado, redirigir al dashboard
-        if ($this->session->isAuthenticated()) {
+        if (Session::isAuthenticated()) {
             $this->redirectToDashboard();
             return;
         }
@@ -61,8 +59,8 @@ class AuthController {
         
         // Validar que las contraseñas coincidan
         if ($data['password'] !== $data['password_confirm']) {
-            $this->session->setFlash('error', 'Las contraseñas no coinciden');
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', 'Las contraseñas no coinciden');
+            Session::setFlash('old_input', $data);
             redirect('/auth/register');
             return;
         }
@@ -74,8 +72,8 @@ class AuthController {
             if ($upload_result['success']) {
                 $photo_path = $upload_result['path'];
             } else {
-                $this->session->setFlash('error', $upload_result['message']);
-                $this->session->setFlash('old_input', $data);
+                Session::setFlash('error', $upload_result['message']);
+                Session::setFlash('old_input', $data);
                 redirect('/auth/register');
                 return;
             }
@@ -97,15 +95,15 @@ class AuthController {
             );
             
             if ($email_sent) {
-                $this->session->setFlash('success', 'Registro exitoso. Revisa tu email para activar tu cuenta.');
+                Session::setFlash('success', 'Registro exitoso. Revisa tu email para activar tu cuenta.');
             } else {
-                $this->session->setFlash('success', 'Registro exitoso. No se pudo enviar el email de activación, pero puedes usar este enlace: ' . $activation_url);
+                Session::setFlash('success', 'Registro exitoso. No se pudo enviar el email de activación, pero puedes usar este enlace: ' . $activation_url);
             }
             
             redirect('/auth/login');
         } else {
-            $this->session->setFlash('error', $result['message']);
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
             redirect('/auth/register');
         }
     }
@@ -115,7 +113,7 @@ class AuthController {
      */
     public function showLogin() {
         // Si ya está autenticado, redirigir al dashboard
-        if ($this->session->isAuthenticated()) {
+        if (Session::isAuthenticated()) {
             $this->redirectToDashboard();
             return;
         }
@@ -138,7 +136,7 @@ class AuthController {
         
         // Validar campos
         if (empty($email) || empty($password)) {
-            $this->session->setFlash('error', 'Email y contraseña son requeridos');
+            Session::setFlash('error', 'Email y contraseña son requeridos');
             redirect('/auth/login');
             return;
         }
@@ -148,21 +146,21 @@ class AuthController {
         
         if ($result['success']) {
             // Guardar datos en sesión
-            $this->session->set('user_id', $result['user']['id']);
-            $this->session->set('user_type', $result['user']['user_type']);
-            $this->session->set('user_name', $result['user']['first_name'] . ' ' . $result['user']['last_name']);
-            $this->session->set('user_email', $result['user']['email']);
-            $this->session->set('user_photo', $result['user']['photo_path']);
+            Session::set('user_id', $result['user']['id']);
+            Session::set('user_type', $result['user']['user_type']);
+            Session::set('user_name', $result['user']['first_name'] . ' ' . $result['user']['last_name']);
+            Session::set('user_email', $result['user']['email']);
+            Session::set('user_photo', $result['user']['photo_path']);
             
             // Regenerar session ID por seguridad
             session_regenerate_id(true);
             
-            $this->session->setFlash('success', 'Bienvenido, ' . $result['user']['first_name']);
+            Session::setFlash('success', 'Bienvenido, ' . $result['user']['first_name']);
             
             // Redirigir según tipo de usuario
             $this->redirectToDashboard();
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
             redirect('/auth/login');
         }
     }
@@ -171,8 +169,8 @@ class AuthController {
      * Cerrar sesión
      */
     public function logout() {
-        $this->session->destroy();
-        $this->session->setFlash('success', 'Sesión cerrada exitosamente');
+        Session::destroy();
+        Session::setFlash('success', 'Sesión cerrada exitosamente');
         redirect('/');
     }
     
@@ -183,7 +181,7 @@ class AuthController {
         $token = sanitize($_GET['token'] ?? '');
         
         if (empty($token)) {
-            $this->session->setFlash('error', 'Token de activación inválido');
+            Session::setFlash('error', 'Token de activación inválido');
             redirect('/auth/login');
             return;
         }
@@ -191,9 +189,9 @@ class AuthController {
         $result = $this->userModel->activate($token);
         
         if ($result['success']) {
-            $this->session->setFlash('success', 'Cuenta activada exitosamente. Ya puedes iniciar sesión.');
+            Session::setFlash('success', 'Cuenta activada exitosamente. Ya puedes iniciar sesión.');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/auth/login');
@@ -203,7 +201,7 @@ class AuthController {
      * Mostrar formulario de recuperación de contraseña
      */
     public function showForgotPassword() {
-        if ($this->session->isAuthenticated()) {
+        if (Session::isAuthenticated()) {
             $this->redirectToDashboard();
             return;
         }
@@ -223,7 +221,7 @@ class AuthController {
         $email = sanitize($_POST['email'] ?? '');
         
         if (empty($email)) {
-            $this->session->setFlash('error', 'El email es requerido');
+            Session::setFlash('error', 'El email es requerido');
             redirect('/auth/forgot-password');
             return;
         }
@@ -249,7 +247,7 @@ class AuthController {
         }
         
         // Siempre mostrar el mismo mensaje (seguridad)
-        $this->session->setFlash('success', 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.');
+        Session::setFlash('success', 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.');
         redirect('/auth/login');
     }
     
@@ -258,17 +256,17 @@ class AuthController {
      */
     public function showProfile() {
         // Verificar autenticación
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             return;
         }
         
-        $user_id = $this->session->get('user_id');
+        $user_id = Session::get('user_id');
         $user = $this->userModel->findById($user_id);
         
         if (!$user) {
-            $this->session->setFlash('error', 'Usuario no encontrado');
+            Session::setFlash('error', 'Usuario no encontrado');
             redirect('/');
             return;
         }
@@ -281,8 +279,8 @@ class AuthController {
      */
     public function updateProfile() {
         // Verificar autenticación
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             return;
         }
@@ -292,7 +290,7 @@ class AuthController {
             return;
         }
         
-        $user_id = $this->session->get('user_id');
+        $user_id = Session::get('user_id');
         
         // Obtener datos del formulario
         $data = [
@@ -307,7 +305,7 @@ class AuthController {
         // Manejar nueva contraseña (opcional)
         if (!empty($_POST['new_password'])) {
             if ($_POST['new_password'] !== $_POST['new_password_confirm']) {
-                $this->session->setFlash('error', 'Las contraseñas no coinciden');
+                Session::setFlash('error', 'Las contraseñas no coinciden');
                 redirect('/auth/profile');
                 return;
             }
@@ -333,15 +331,15 @@ class AuthController {
         
         if ($result['success']) {
             // Actualizar datos de sesión
-            $this->session->set('user_name', $data['first_name'] . ' ' . $data['last_name']);
-            $this->session->set('user_email', $data['email']);
+            Session::set('user_name', $data['first_name'] . ' ' . $data['last_name']);
+            Session::set('user_email', $data['email']);
             if (isset($data['photo_path'])) {
-                $this->session->set('user_photo', $data['photo_path']);
+                Session::set('user_photo', $data['photo_path']);
             }
             
-            $this->session->setFlash('success', 'Perfil actualizado exitosamente');
+            Session::setFlash('success', 'Perfil actualizado exitosamente');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/auth/profile');
@@ -352,8 +350,8 @@ class AuthController {
      * @return bool
      */
     public function requireAuth() {
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión para acceder a esta página');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión para acceder a esta página');
             redirect('/auth/login');
             return false;
         }
@@ -370,17 +368,17 @@ class AuthController {
             return false;
         }
         
-        $user_type = $this->session->get('user_type');
+        $user_type = Session::get('user_type');
         
         if (is_array($allowed_roles)) {
             if (!in_array($user_type, $allowed_roles)) {
-                $this->session->setFlash('error', 'No tienes permiso para acceder a esta página');
+                Session::setFlash('error', 'No tienes permiso para acceder a esta página');
                 redirect('/dashboard');
                 return false;
             }
         } else {
             if ($user_type !== $allowed_roles) {
-                $this->session->setFlash('error', 'No tienes permiso para acceder a esta página');
+                Session::setFlash('error', 'No tienes permiso para acceder a esta página');
                 redirect('/dashboard');
                 return false;
             }
@@ -393,7 +391,7 @@ class AuthController {
      * Redirigir al dashboard según tipo de usuario
      */
     private function redirectToDashboard() {
-        $user_type = $this->session->get('user_type');
+        $user_type = Session::get('user_type');
         
         switch ($user_type) {
             case 'admin':

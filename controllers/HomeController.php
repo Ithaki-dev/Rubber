@@ -11,12 +11,10 @@ require_once __DIR__ . '/../core/Helpers.php';
 
 class HomeController {
     private $rideModel;
-    private $session;
     private $email;
     
     public function __construct() {
         $this->rideModel = new Ride();
-        $this->session = Session::getInstance();
         $this->email = new Email();
     }
     
@@ -62,7 +60,7 @@ class HomeController {
         $ride = $this->rideModel->findById($id);
         
         if (!$ride) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/');
             return;
         }
@@ -109,8 +107,8 @@ class HomeController {
         
         // Validar campos
         if (empty($data['name']) || empty($data['email']) || empty($data['message'])) {
-            $this->session->setFlash('error', 'Todos los campos son requeridos');
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', 'Todos los campos son requeridos');
+            Session::setFlash('old_input', $data);
             redirect('/contact');
             return;
         }
@@ -125,9 +123,9 @@ class HomeController {
         );
         
         if ($email_sent) {
-            $this->session->setFlash('success', 'Mensaje enviado exitosamente. Te contactaremos pronto.');
+            Session::setFlash('success', 'Mensaje enviado exitosamente. Te contactaremos pronto.');
         } else {
-            $this->session->setFlash('warning', 'Mensaje recibido, pero no se pudo enviar el email de confirmación.');
+            Session::setFlash('warning', 'Mensaje recibido, pero no se pudo enviar el email de confirmación.');
         }
         
         redirect('/contact');
@@ -137,12 +135,12 @@ class HomeController {
      * Redirigir al dashboard correspondiente
      */
     public function dashboard() {
-        if (!$this->session->isAuthenticated()) {
+        if (!Session::isAuthenticated()) {
             redirect('/auth/login');
             return;
         }
         
-        $user_type = $this->session->get('user_type');
+        $user_type = Session::get('user_type');
         
         switch ($user_type) {
             case 'admin':

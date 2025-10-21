@@ -17,7 +17,6 @@ class AdminController {
     private $vehicleModel;
     private $rideModel;
     private $reservationModel;
-    private $session;
     private $statistics;
     
     public function __construct() {
@@ -25,7 +24,6 @@ class AdminController {
         $this->vehicleModel = new Vehicle();
         $this->rideModel = new Ride();
         $this->reservationModel = new Reservation();
-        $this->session = Session::getInstance();
         $this->statistics = new Statistics();
         
         // Verificar que el usuario es admin
@@ -86,7 +84,7 @@ class AdminController {
         $user = $this->userModel->findById($id);
         
         if (!$user) {
-            $this->session->setFlash('error', 'Usuario no encontrado');
+            Session::setFlash('error', 'Usuario no encontrado');
             redirect('/admin/users');
             return;
         }
@@ -147,11 +145,11 @@ class AdminController {
             // Admin puede activar directamente
             $this->userModel->changeStatus($result['user_id'], 'active');
             
-            $this->session->setFlash('success', 'Usuario creado exitosamente');
+            Session::setFlash('success', 'Usuario creado exitosamente');
             redirect('/admin/users');
         } else {
-            $this->session->setFlash('error', $result['message']);
-            $this->session->setFlash('old_input', $data);
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
             redirect('/admin/users/create');
         }
     }
@@ -163,7 +161,7 @@ class AdminController {
         $user = $this->userModel->findById($id);
         
         if (!$user) {
-            $this->session->setFlash('error', 'Usuario no encontrado');
+            Session::setFlash('error', 'Usuario no encontrado');
             redirect('/admin/users');
             return;
         }
@@ -182,7 +180,7 @@ class AdminController {
         
         $user = $this->userModel->findById($id);
         if (!$user) {
-            $this->session->setFlash('error', 'Usuario no encontrado');
+            Session::setFlash('error', 'Usuario no encontrado');
             redirect('/admin/users');
             return;
         }
@@ -216,10 +214,10 @@ class AdminController {
         $result = $this->userModel->update($id, $data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/admin/users');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
             redirect('/admin/users/edit/' . $id);
         }
     }
@@ -229,15 +227,15 @@ class AdminController {
      */
     public function deleteUser($id) {
         // No permitir eliminar el admin actual
-        if ($id == $this->session->get('user_id')) {
-            $this->session->setFlash('error', 'No puedes eliminar tu propia cuenta');
+        if ($id == Session::get('user_id')) {
+            Session::setFlash('error', 'No puedes eliminar tu propia cuenta');
             redirect('/admin/users');
             return;
         }
         
         $user = $this->userModel->findById($id);
         if (!$user) {
-            $this->session->setFlash('error', 'Usuario no encontrado');
+            Session::setFlash('error', 'Usuario no encontrado');
             redirect('/admin/users');
             return;
         }
@@ -249,9 +247,9 @@ class AdminController {
             if (!empty($user['photo_path'])) {
                 deleteFile($user['photo_path']);
             }
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/admin/users');
@@ -265,9 +263,9 @@ class AdminController {
         $result = $this->userModel->changeStatus($id, $new_status);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/admin/users');
@@ -300,7 +298,7 @@ class AdminController {
         $vehicle = $this->vehicleModel->findById($id);
         
         if (!$vehicle) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/admin/vehicles');
             return;
         }
@@ -317,7 +315,7 @@ class AdminController {
     public function deleteVehicle($id) {
         $vehicle = $this->vehicleModel->findById($id);
         if (!$vehicle) {
-            $this->session->setFlash('error', 'Vehículo no encontrado');
+            Session::setFlash('error', 'Vehículo no encontrado');
             redirect('/admin/vehicles');
             return;
         }
@@ -328,9 +326,9 @@ class AdminController {
             if (!empty($vehicle['photo_path'])) {
                 deleteFile($vehicle['photo_path']);
             }
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/admin/vehicles');
@@ -363,7 +361,7 @@ class AdminController {
         $ride = $this->rideModel->findById($id);
         
         if (!$ride) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/admin/rides');
             return;
         }
@@ -380,9 +378,9 @@ class AdminController {
         $result = $this->rideModel->delete($id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/admin/rides');
@@ -415,7 +413,7 @@ class AdminController {
         $reservation = $this->reservationModel->findById($id);
         
         if (!$reservation) {
-            $this->session->setFlash('error', 'Reserva no encontrada');
+            Session::setFlash('error', 'Reserva no encontrada');
             redirect('/admin/reservations');
             return;
         }
@@ -430,9 +428,9 @@ class AdminController {
         $result = $this->reservationModel->delete($id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/admin/reservations');
@@ -479,14 +477,14 @@ class AdminController {
      * Verificar que el usuario es admin
      */
     private function requireAdminRole() {
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;
         }
         
-        if ($this->session->get('user_type') !== 'admin') {
-            $this->session->setFlash('error', 'No tienes permiso para acceder a esta página');
+        if (Session::get('user_type') !== 'admin') {
+            Session::setFlash('error', 'No tienes permiso para acceder a esta página');
             redirect('/dashboard');
             exit;
         }

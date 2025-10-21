@@ -13,13 +13,11 @@ require_once __DIR__ . '/../core/Helpers.php';
 class PassengerController {
     private $rideModel;
     private $reservationModel;
-    private $session;
     private $statistics;
     
     public function __construct() {
         $this->rideModel = new Ride();
         $this->reservationModel = new Reservation();
-        $this->session = Session::getInstance();
         $this->statistics = new Statistics();
         
         // Verificar que el usuario es pasajero
@@ -30,7 +28,7 @@ class PassengerController {
      * Dashboard del pasajero
      */
     public function dashboard() {
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         
         // Obtener estadísticas del pasajero
         $stats = $this->statistics->getPassengerStatistics($passenger_id);
@@ -83,19 +81,19 @@ class PassengerController {
         $ride = $this->rideModel->findById($id);
         
         if (!$ride) {
-            $this->session->setFlash('error', 'Viaje no encontrado');
+            Session::setFlash('error', 'Viaje no encontrado');
             redirect('/passenger/search');
             return;
         }
         
         if (!$ride['is_active'] || $ride['available_seats'] <= 0) {
-            $this->session->setFlash('error', 'Este viaje no está disponible');
+            Session::setFlash('error', 'Este viaje no está disponible');
             redirect('/passenger/search');
             return;
         }
         
         // Verificar si ya tiene una reserva en este viaje
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         $existing_reservations = $this->reservationModel->getByPassenger($passenger_id, [
             'ride_id' => $id
         ]);
@@ -120,7 +118,7 @@ class PassengerController {
             return;
         }
         
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         
         $data = [
             'passenger_id' => $passenger_id,
@@ -131,10 +129,10 @@ class PassengerController {
         $result = $this->reservationModel->create($data);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
             redirect('/passenger/reservations');
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
             redirect('/passenger/rides/show/' . $data['ride_id']);
         }
     }
@@ -147,7 +145,7 @@ class PassengerController {
      * Listar reservas del pasajero
      */
     public function reservations() {
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         $filter = sanitize($_GET['filter'] ?? 'all');
         
         $filters = [];
@@ -168,12 +166,12 @@ class PassengerController {
      * Ver detalles de una reserva
      */
     public function showReservation($id) {
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         $reservation = $this->reservationModel->findById($id);
         
         // Verificar que la reserva pertenece al pasajero
         if (!$reservation || $reservation['passenger_id'] != $passenger_id) {
-            $this->session->setFlash('error', 'Reserva no encontrada');
+            Session::setFlash('error', 'Reserva no encontrada');
             redirect('/passenger/reservations');
             return;
         }
@@ -185,13 +183,13 @@ class PassengerController {
      * Cancelar reserva
      */
     public function cancelReservation($id) {
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         $result = $this->reservationModel->cancel($id, $passenger_id);
         
         if ($result['success']) {
-            $this->session->setFlash('success', $result['message']);
+            Session::setFlash('success', $result['message']);
         } else {
-            $this->session->setFlash('error', $result['message']);
+            Session::setFlash('error', $result['message']);
         }
         
         redirect('/passenger/reservations');
@@ -201,7 +199,7 @@ class PassengerController {
      * Historial de viajes realizados
      */
     public function history() {
-        $passenger_id = $this->session->get('user_id');
+        $passenger_id = Session::get('user_id');
         
         // Obtener reservas pasadas aceptadas
         $reservations = $this->reservationModel->getByPassenger($passenger_id, [
@@ -216,14 +214,14 @@ class PassengerController {
      * Verificar que el usuario es pasajero
      */
     private function requirePassengerRole() {
-        if (!$this->session->isAuthenticated()) {
-            $this->session->setFlash('error', 'Debes iniciar sesión');
+        if (!Session::isAuthenticated()) {
+            Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;
         }
         
-        if ($this->session->get('user_type') !== 'passenger') {
-            $this->session->setFlash('error', 'No tienes permiso para acceder a esta página');
+        if (Session::get('user_type') !== 'passenger') {
+            Session::setFlash('error', 'No tienes permiso para acceder a esta página');
             redirect('/dashboard');
             exit;
         }
