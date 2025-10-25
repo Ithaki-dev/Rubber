@@ -193,6 +193,10 @@ try {
                 $authController->activate();
                 break;
             
+            case 'resend-activation':
+                $authController->resendActivation();
+                break;
+            
             case 'forgot-password':
                 if ($httpMethod === 'POST') {
                     $authController->forgotPassword();
