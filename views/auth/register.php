@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Registrarse - Carpooling UCR";
+$pageTitle = "Registrarse - Carpooling UTN";
 ob_start();
 ?>
 
@@ -11,11 +11,17 @@ ob_start();
                     <div class="text-center mb-4">
                         <i class="bi bi-person-plus-fill text-primary fs-1"></i>
                         <h2 class="mt-2">Crear Cuenta</h2>
-                        <p class="text-muted">Únete a la comunidad de Carpooling UCR</p>
+                        <p class="text-muted">Únete a la comunidad de Carpooling UTN</p>
                     </div>
 
                     <form action="<?= BASE_URL ?>/auth/register" method="POST" class="needs-validation" novalidate>
-                        <?= Helpers::generateCSRFToken() ?>
+                        <?php
+                        // Generar token CSRF
+                        if (!isset($_SESSION['csrf_token'])) {
+                            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                        }
+                        echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+                        ?>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -67,7 +73,7 @@ ob_start();
                                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                                 required
                             >
-                            <div class="form-text">Preferiblemente usa tu correo institucional (@ucr.ac.cr)</div>
+                            <div class="form-text">Preferiblemente usa tu correo institucional (@utn.ac.cr)</div>
                             <div class="invalid-feedback">
                                 Por favor ingresa un correo válido.
                             </div>
@@ -106,7 +112,7 @@ ob_start();
                                 placeholder="B12345"
                                 maxlength="10"
                             >
-                            <div class="form-text">Si eres estudiante de la UCR</div>
+                            <div class="form-text">Si eres estudiante de la UTN</div>
                         </div>
 
                         <div class="mb-3">
@@ -248,7 +254,7 @@ ob_start();
             </div>
             <div class="modal-body">
                 <h6>1. Uso del Servicio</h6>
-                <p>Este servicio está destinado exclusivamente para la comunidad universitaria de la UCR para compartir viajes de manera segura.</p>
+                <p>Este servicio está destinado exclusivamente para la comunidad universitaria de la UTN para compartir viajes de manera segura.</p>
                 
                 <h6>2. Responsabilidades</h6>
                 <p>Cada usuario es responsable de verificar la identidad y confiabilidad de otros usuarios antes de compartir un viaje.</p>

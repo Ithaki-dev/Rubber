@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Iniciar Sesión - Carpooling UCR";
+$pageTitle = "Iniciar Sesión - Carpooling UTN";
 ob_start();
 ?>
 
@@ -11,11 +11,17 @@ ob_start();
                     <div class="text-center mb-4">
                         <i class="bi bi-car-front-fill text-primary fs-1"></i>
                         <h2 class="mt-2">Iniciar Sesión</h2>
-                        <p class="text-muted">Accede a tu cuenta de Carpooling UCR</p>
+                        <p class="text-muted">Accede a tu cuenta de Carpooling UTN</p>
                     </div>
 
                     <form action="<?= BASE_URL ?>/auth/login" method="POST" class="needs-validation" novalidate>
-                        <?= Helpers::generateCSRFToken() ?>
+                        <?php
+                        // Generar token CSRF
+                        if (!isset($_SESSION['csrf_token'])) {
+                            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                        }
+                        echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+                        ?>
                         
                         <div class="mb-3">
                             <label for="email" class="form-label">
