@@ -89,7 +89,7 @@
         </div>
         
         <p>
-            Bienvenido al sistema de carpooling de la Universidad de Costa Rica. 
+            Bienvenido al sistema de carpooling de la Universidad Tecnica Nacional. 
             Comparte viajes, ahorra dinero y contribuye al medio ambiente.
         </p>
         
@@ -142,7 +142,7 @@
         </ul>
         
         <p style="margin-top: 2rem; text-align: center; color: #888;">
-            <small>ISW-613 - Universidad de Costa Rica</small>
+            <small>ISW-613 - Universidad Tecnica Nacional</small>
         </p>
     </div>
 </body>
