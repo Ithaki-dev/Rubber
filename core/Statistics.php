@@ -1,21 +1,23 @@
 <?php
 
 /**
- * Funciones de Estadísticas y Utilidades
+ * Clase de Estadísticas y Utilidades
  * Equivalentes a los procedimientos almacenados que no se pudieron crear
  * debido al bug de mysql.proc en XAMPP
  */
 
 require_once __DIR__ . '/Database.php';
 
-/**
- * Obtener estadísticas completas de un chofer
- * Equivalente a: CALL sp_driver_statistics($driver_id)
- * 
- * @param int $driver_id ID del chofer
- * @return array Estadísticas del chofer
- */
-function getDriverStatistics($driver_id) {
+class Statistics {
+    
+    /**
+     * Obtener estadísticas completas de un chofer
+     * Equivalente a: CALL sp_driver_statistics($driver_id)
+     * 
+     * @param int $driver_id ID del chofer
+     * @return array Estadísticas del chofer
+     */
+    public function getDriverStatistics($driver_id) {
     $db = Database::getInstance();
     
     $query = "
@@ -52,14 +54,14 @@ function getDriverStatistics($driver_id) {
     return $stats;
 }
 
-/**
- * Obtener estadísticas completas de un pasajero
- * Equivalente a: CALL sp_passenger_statistics($passenger_id)
- * 
- * @param int $passenger_id ID del pasajero
- * @return array Estadísticas del pasajero
- */
-function getPassengerStatistics($passenger_id) {
+    /**
+     * Obtener estadísticas completas de un pasajero
+     * Equivalente a: CALL sp_passenger_statistics($passenger_id)
+     * 
+     * @param int $passenger_id ID del pasajero
+     * @return array Estadísticas del pasajero
+     */
+    public function getPassengerStatistics($passenger_id) {
     $db = Database::getInstance();
     
     $query = "
@@ -92,14 +94,14 @@ function getPassengerStatistics($passenger_id) {
     return $stats;
 }
 
-/**
- * Obtener reservas pendientes antiguas para notificaciones
- * Equivalente a: CALL sp_get_old_pending_reservations($minutes)
- * 
- * @param int $minutes Minutos desde la creación de la reserva
- * @return array Lista de choferes con reservas pendientes antiguas
- */
-function getOldPendingReservations($minutes = 30) {
+    /**
+     * Obtener reservas pendientes antiguas para notificaciones
+     * Equivalente a: CALL sp_get_old_pending_reservations($minutes)
+     * 
+     * @param int $minutes Minutos desde la creación de la reserva
+     * @return array Lista de choferes con reservas pendientes antiguas
+     */
+    public function getOldPendingReservations($minutes = 30) {
     $db = Database::getInstance();
     
     $query = "
@@ -120,14 +122,14 @@ function getOldPendingReservations($minutes = 30) {
     return $result->fetchAll(PDO::FETCH_ASSOC);
 }
 
-/**
- * Calcular edad basada en fecha de nacimiento
- * Equivalente a: SELECT fn_calculate_age($birth_date)
- * 
- * @param string $birth_date Fecha de nacimiento (formato: Y-m-d)
- * @return int Edad en años
- */
-function calculateAge($birth_date) {
+    /**
+     * Calcular edad basada en fecha de nacimiento
+     * Equivalente a: SELECT fn_calculate_age($birth_date)
+     * 
+     * @param string $birth_date Fecha de nacimiento (formato: Y-m-d)
+     * @return int Edad en años
+     */
+    public function calculateAge($birth_date) {
     if (empty($birth_date)) {
         return 0;
     }
@@ -139,14 +141,14 @@ function calculateAge($birth_date) {
     return $age;
 }
 
-/**
- * Verificar si un viaje está lleno
- * Equivalente a: SELECT fn_is_ride_full($ride_id)
- * 
- * @param int $ride_id ID del viaje
- * @return bool True si está lleno, False si tiene asientos disponibles
- */
-function isRideFull($ride_id) {
+    /**
+     * Verificar si un viaje está lleno
+     * Equivalente a: SELECT fn_is_ride_full($ride_id)
+     * 
+     * @param int $ride_id ID del viaje
+     * @return bool True si está lleno, False si tiene asientos disponibles
+     */
+    public function isRideFull($ride_id) {
     $db = Database::getInstance();
     
     $query = "SELECT available_seats FROM rides WHERE id = ?";
@@ -160,13 +162,13 @@ function isRideFull($ride_id) {
     return $ride['available_seats'] <= 0;
 }
 
-/**
- * Obtener asientos disponibles de un viaje
- * 
- * @param int $ride_id ID del viaje
- * @return int Número de asientos disponibles
- */
-function getAvailableSeats($ride_id) {
+    /**
+     * Obtener asientos disponibles de un viaje
+     * 
+     * @param int $ride_id ID del viaje
+     * @return int Número de asientos disponibles
+     */
+    public function getAvailableSeats($ride_id) {
     $db = Database::getInstance();
     
     $query = "SELECT available_seats FROM rides WHERE id = ?";
@@ -176,15 +178,15 @@ function getAvailableSeats($ride_id) {
     return $ride ? (int)$ride['available_seats'] : 0;
 }
 
-/**
- * Verificar si un usuario puede reservar cierta cantidad de asientos
- * 
- * @param int $ride_id ID del viaje
- * @param int $seats_requested Asientos solicitados
- * @return array ['can_reserve' => bool, 'available' => int, 'message' => string]
- */
-function canReserveSeats($ride_id, $seats_requested) {
-    $available = getAvailableSeats($ride_id);
+    /**
+     * Verificar si un usuario puede reservar cierta cantidad de asientos
+     * 
+     * @param int $ride_id ID del viaje
+     * @param int $seats_requested Asientos solicitados
+     * @return array ['can_reserve' => bool, 'available' => int, 'message' => string]
+     */
+    public function canReserveSeats($ride_id, $seats_requested) {
+        $available = $this->getAvailableSeats($ride_id);
     
     if ($seats_requested > $available) {
         return [
@@ -201,13 +203,13 @@ function canReserveSeats($ride_id, $seats_requested) {
     ];
 }
 
-/**
- * Obtener el total de ganancias de un chofer
- * 
- * @param int $driver_id ID del chofer
- * @return float Total de ganancias
- */
-function getDriverEarnings($driver_id) {
+    /**
+     * Obtener el total de ganancias de un chofer
+     * 
+     * @param int $driver_id ID del chofer
+     * @return float Total de ganancias
+     */
+    public function getDriverEarnings($driver_id) {
     $db = Database::getInstance();
     
     $query = "
@@ -224,13 +226,13 @@ function getDriverEarnings($driver_id) {
     return (float)$data['total_earnings'];
 }
 
-/**
- * Obtener el número de reservas pendientes de un chofer
- * 
- * @param int $driver_id ID del chofer
- * @return int Número de reservas pendientes
- */
-function getDriverPendingReservationsCount($driver_id) {
+    /**
+     * Obtener el número de reservas pendientes de un chofer
+     * 
+     * @param int $driver_id ID del chofer
+     * @return int Número de reservas pendientes
+     */
+    public function getDriverPendingReservationsCount($driver_id) {
     $db = Database::getInstance();
     
     $query = "
@@ -247,14 +249,14 @@ function getDriverPendingReservationsCount($driver_id) {
     return (int)$data['pending_count'];
 }
 
-/**
- * Obtener viajes próximos de un chofer
- * 
- * @param int $driver_id ID del chofer
- * @param int $limit Límite de resultados
- * @return array Lista de viajes
- */
-function getDriverUpcomingRides($driver_id, $limit = 5) {
+    /**
+     * Obtener viajes próximos de un chofer
+     * 
+     * @param int $driver_id ID del chofer
+     * @param int $limit Límite de resultados
+     * @return array Lista de viajes
+     */
+    public function getDriverUpcomingRides($driver_id, $limit = 5) {
     $db = Database::getInstance();
     
     $query = "
@@ -270,14 +272,14 @@ function getDriverUpcomingRides($driver_id, $limit = 5) {
     return $result->fetchAll(PDO::FETCH_ASSOC);
 }
 
-/**
- * Obtener reservas próximas de un pasajero
- * 
- * @param int $passenger_id ID del pasajero
- * @param int $limit Límite de resultados
- * @return array Lista de reservas
- */
-function getPassengerUpcomingReservations($passenger_id, $limit = 5) {
+    /**
+     * Obtener reservas próximas de un pasajero
+     * 
+     * @param int $passenger_id ID del pasajero
+     * @param int $limit Límite de resultados
+     * @return array Lista de reservas
+     */
+    public function getPassengerUpcomingReservations($passenger_id, $limit = 5) {
     $db = Database::getInstance();
     
     $query = "
@@ -291,4 +293,6 @@ function getPassengerUpcomingReservations($passenger_id, $limit = 5) {
     
     $result = $db->query($query, [$passenger_id, $limit]);
     return $result->fetchAll(PDO::FETCH_ASSOC);
+}
+
 }
