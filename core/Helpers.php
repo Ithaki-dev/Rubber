@@ -19,6 +19,10 @@ function e($string) {
  * @param string $url URL de destino
  */
 function redirect($url) {
+    // Si la URL es relativa (empieza con /), agregar BASE_URL
+    if (strpos($url, '/') === 0 && !preg_match('/^https?:\/\//', $url)) {
+        $url = BASE_URL . $url;
+    }
     header("Location: $url");
     exit();
 }
