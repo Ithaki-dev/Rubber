@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $pageTitle ?? 'Carpooling UCR' ?></title>
+    <title><?= $pageTitle ?? 'Carpooling UTN' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>/css/style.css" rel="stylesheet">
@@ -14,7 +14,7 @@
         <div class="container">
             <a class="navbar-brand" href="<?= BASE_URL ?>">
                 <i class="bi bi-car-front-fill me-2"></i>
-                Carpooling UCR
+                Carpooling UTN
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -110,7 +110,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
-                    <h5><i class="bi bi-car-front-fill me-2"></i>Carpooling UCR</h5>
+                    <h5><i class="bi bi-car-front-fill me-2"></i>Carpooling UTN</h5>
                     <p class="mb-0">Conectando estudiantes para viajes compartidos seguros y económicos.</p>
                 </div>
                 <div class="col-md-3">
@@ -123,14 +123,14 @@
                 <div class="col-md-3">
                     <h6>Soporte</h6>
                     <ul class="list-unstyled">
-                        <li><span class="text-light">Email: soporte@ucr.ac.cr</span></li>
+                        <li><span class="text-light">Email: soporte@utn.ac.cr</span></li>
                         <li><span class="text-light">Tel: (506) 2511-4000</span></li>
                     </ul>
                 </div>
             </div>
             <hr>
             <div class="text-center">
-                <small>&copy; <?= date('Y') ?> Universidad de Costa Rica. Todos los derechos reservados.</small>
+                <small>&copy; <?= date('Y') ?> Universidad Técnica Nacional. Todos los derechos reservados.</small>
             </div>
         </div>
     </footer>
