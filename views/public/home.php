@@ -32,7 +32,7 @@
     <section class="hero">
         <div class="container">
             <h1>Comparte tu viaje, ahorra dinero</h1>
-            <p>La forma más fácil y económica de viajar por Costa Rica</p>
+            <p>La forma más fácil y económica de viajar por todo el país</p>
             <?php if (!Session::isLoggedIn()): ?>
                 <a href="<?= BASE_URL ?>/register" class="btn btn-primary btn-lg">Regístrate Ahora</a>
                 <a href="<?= BASE_URL ?>/search" class="btn btn-outline btn-lg">Buscar Viajes</a>
