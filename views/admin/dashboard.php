@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Panel de Administrador - Carpooling UCR";
+$pageTitle = "Panel de Administrador - Carpooling UTN";
 ob_start();
 ?>
 
@@ -378,11 +378,11 @@ ob_start();
                                     <form>
                                         <div class="mb-3">
                                             <label class="form-label">Nombre del Sistema</label>
-                                            <input type="text" class="form-control" value="Carpooling UCR">
+                                            <input type="text" class="form-control" value="Carpooling UTN">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Email de Contacto</label>
-                                            <input type="email" class="form-control" value="soporte@ucr.ac.cr">
+                                            <input type="email" class="form-control" value="soporte@utn.ac.cr">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Precio Mínimo por Asiento</label>

@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Panel de Pasajero - Carpooling UCR";
+$pageTitle = "Panel de Pasajero - Carpooling UTN";
 ob_start();
 ?>
 
@@ -56,7 +56,7 @@ ob_start();
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Destino</label>
-                                    <input type="text" class="form-control" id="destination" placeholder="Ej: UCR Rodrigo Facio">
+                                    <input type="text" class="form-control" id="destination" placeholder="Ej: UTN Campus Central">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Fecha</label>
