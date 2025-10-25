@@ -86,21 +86,31 @@ class AuthController {
         
         if ($result['success']) {
             // Enviar email de activación
-            $activation_url = BASE_URL . '/auth/activate?token=' . $result['activation_token'];
-            
-            $email_sent = $this->email->sendActivationEmail(
+            $emailResult = $this->email->sendActivationEmail(
                 $data['email'],
                 $data['first_name'],
-                $activation_url
+                $result['activation_token']
             );
             
-            if ($email_sent) {
-                Session::setFlash('success', 'Registro exitoso. Revisa tu email para activar tu cuenta.');
+            if ($emailResult['success']) {
+                Session::setFlash('success', '
+                    <strong>¡Registro exitoso! 🎉</strong><br>
+                    Te hemos enviado un email de activación a <strong>' . $data['email'] . '</strong><br>
+                    <small class="text-muted">Revisa también tu carpeta de spam</small>
+                ');
             } else {
-                Session::setFlash('success', 'Registro exitoso. No se pudo enviar el email de activación, pero puedes usar este enlace: ' . $activation_url);
+                // Log el error del email para debugging
+                error_log('Error enviando email de activación: ' . print_r($emailResult, true));
+                
+                $activation_url = BASE_URL . '/auth/activate?token=' . $result['activation_token'];
+                Session::setFlash('warning', '
+                    <strong>Registro exitoso</strong>, pero no se pudo enviar el email de activación.<br>
+                    <strong>Enlace manual:</strong><br>
+                    <a href="' . $activation_url . '" class="btn btn-sm btn-outline-primary mt-2">Activar cuenta ahora</a>
+                ');
             }
             
-            redirect('/auth/login');
+            redirect('/auth/login?registered=1');
         } else {
             Session::setFlash('error', $result['message']);
             Session::setFlash('old_input', $data);
@@ -185,20 +195,80 @@ class AuthController {
         $token = sanitize($_GET['token'] ?? '');
         
         if (empty($token)) {
-            Session::setFlash('error', 'Token de activación inválido');
+            Session::setFlash('error', 'Token de activación inválido o no proporcionado');
             redirect('/auth/login');
             return;
         }
         
+        // Intentar activar la cuenta
         $result = $this->userModel->activate($token);
         
         if ($result['success']) {
-            Session::setFlash('success', 'Cuenta activada exitosamente. Ya puedes iniciar sesión.');
+            // Enviar email de bienvenida
+            if (isset($result['user'])) {
+                $welcomeResult = $this->email->sendWelcome(
+                    $result['user']['email'],
+                    $result['user']['first_name']
+                );
+                
+                if (!$welcomeResult['success']) {
+                    // Log el error del email pero no interrumpir el flujo
+                    error_log('Error enviando email de bienvenida: ' . print_r($welcomeResult, true));
+                }
+            }
+            
+            Session::setFlash('success', '🎉 ¡Cuenta activada exitosamente! Ya puedes iniciar sesión y comenzar a usar Carpooling UTN.');
+            redirect('/auth/login?activated=1');
         } else {
-            Session::setFlash('error', $result['message']);
+            $errorMessage = $result['message'] ?? 'Error desconocido al activar la cuenta';
+            Session::setFlash('error', $errorMessage);
+            
+            // Si el token es inválido o expirado, ofrecer reenviar
+            if (strpos($errorMessage, 'inválido') !== false || strpos($errorMessage, 'expirado') !== false) {
+                Session::setFlash('info', 'Si necesitas un nuevo enlace de activación, <a href="/auth/resend-activation">haz clic aquí</a>.');
+            }
+            
+            redirect('/auth/login');
         }
-        
-        redirect('/auth/login');
+    }
+    
+    /**
+     * Reenviar email de activación
+     */
+    public function resendActivation() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $email = sanitize($_POST['email'] ?? '');
+            
+            if (empty($email)) {
+                Session::setFlash('error', 'Por favor ingresa tu email');
+                redirect('/auth/resend-activation');
+                return;
+            }
+            
+            $result = $this->userModel->resendActivation($email);
+            
+            if ($result['success']) {
+                $emailResult = $this->email->sendActivationEmail(
+                    $email,
+                    $result['user']['first_name'],
+                    $result['activation_token']
+                );
+                
+                if ($emailResult['success']) {
+                    Session::setFlash('success', 'Email de activación reenviado exitosamente a ' . $email);
+                } else {
+                    $activation_url = BASE_URL . '/auth/activate?token=' . $result['activation_token'];
+                    Session::setFlash('warning', 'No se pudo enviar el email. Usa este enlace: <a href="' . $activation_url . '">Activar cuenta</a>');
+                }
+            } else {
+                Session::setFlash('error', $result['message']);
+            }
+            
+            redirect('/auth/login');
+        } else {
+            // Mostrar formulario de reenvío
+            include '../app/views/auth/resend-activation.php';
+        }
     }
     
     /**

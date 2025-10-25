@@ -218,24 +218,72 @@ class User {
     /**
      * Activar cuenta de usuario
      * @param string $token Token de activación
-     * @return array ['success' => bool, 'message' => string]
+     * @return array ['success' => bool, 'message' => string, 'user' => array|null]
      */
     public function activate($token) {
-        $sql = "SELECT id FROM users WHERE activation_token = ? AND status = 'pending'";
+        // Buscar usuario con el token
+        $sql = "SELECT id, email, first_name, last_name FROM users WHERE activation_token = ? AND status = 'pending'";
         $stmt = $this->db->query($sql, [$token]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$user) {
-            return ['success' => false, 'message' => 'Token inválido o cuenta ya activada'];
+            return ['success' => false, 'message' => 'Token de activación inválido o la cuenta ya está activada'];
         }
         
-        $sql = "UPDATE users SET status = 'active', activation_token = NULL WHERE id = ?";
+        // Activar la cuenta
+        $sql = "UPDATE users SET status = 'active', activation_token = NULL, activated_at = NOW() WHERE id = ?";
         
         try {
             $this->db->query($sql, [$user['id']]);
-            return ['success' => true, 'message' => 'Cuenta activada exitosamente'];
+            return [
+                'success' => true, 
+                'message' => 'Cuenta activada exitosamente',
+                'user' => $user
+            ];
         } catch (PDOException $e) {
             return ['success' => false, 'message' => 'Error al activar cuenta: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Reenviar token de activación
+     * @param string $email Email del usuario
+     * @return array ['success' => bool, 'message' => string, 'user' => array|null, 'activation_token' => string|null]
+     */
+    public function resendActivation($email) {
+        // Buscar usuario pendiente de activación
+        $sql = "SELECT id, email, first_name, last_name, status FROM users WHERE email = ?";
+        $stmt = $this->db->query($sql, [$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            return ['success' => false, 'message' => 'No se encontró una cuenta con ese email'];
+        }
+        
+        if ($user['status'] === 'active') {
+            return ['success' => false, 'message' => 'Esta cuenta ya está activada. Puedes iniciar sesión normalmente.'];
+        }
+        
+        if ($user['status'] !== 'pending') {
+            return ['success' => false, 'message' => 'Esta cuenta tiene un estado que no permite la activación'];
+        }
+        
+        // Generar nuevo token
+        $newToken = bin2hex(random_bytes(32));
+        
+        // Actualizar token en la base de datos
+        $sql = "UPDATE users SET activation_token = ?, created_at = NOW() WHERE id = ?";
+        
+        try {
+            $this->db->query($sql, [$newToken, $user['id']]);
+            return [
+                'success' => true,
+                'message' => 'Nuevo enlace de activación generado',
+                'user' => $user,
+                'activation_token' => $newToken
+            ];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error al generar nuevo token: ' . $e->getMessage()];
         }
     }
     
