@@ -26,7 +26,7 @@ class AuthController {
      */
     public function showRegister() {
         // Si ya está autenticado, redirigir al dashboard
-        if (Session::isAuthenticated()) {
+        if (Session::isLoggedIn()) {
             $this->redirectToDashboard();
             return;
         }
@@ -113,7 +113,7 @@ class AuthController {
      */
     public function showLogin() {
         // Si ya está autenticado, redirigir al dashboard
-        if (Session::isAuthenticated()) {
+        if (Session::isLoggedIn()) {
             $this->redirectToDashboard();
             return;
         }
@@ -201,7 +201,7 @@ class AuthController {
      * Mostrar formulario de recuperación de contraseña
      */
     public function showForgotPassword() {
-        if (Session::isAuthenticated()) {
+        if (Session::isLoggedIn()) {
             $this->redirectToDashboard();
             return;
         }
@@ -256,7 +256,7 @@ class AuthController {
      */
     public function showProfile() {
         // Verificar autenticación
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             return;
@@ -279,7 +279,7 @@ class AuthController {
      */
     public function updateProfile() {
         // Verificar autenticación
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             return;
@@ -350,7 +350,7 @@ class AuthController {
      * @return bool
      */
     public function requireAuth() {
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión para acceder a esta página');
             redirect('/auth/login');
             return false;

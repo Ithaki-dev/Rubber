@@ -363,3 +363,122 @@ function paginate($total, $perPage = ITEMS_PER_PAGE, $currentPage = 1) {
         'has_next' => $currentPage < $totalPages
     ];
 }
+
+/**
+ * Clase Helpers para métodos utilitarios estáticos
+ */
+class Helpers {
+    
+    /**
+     * Generar token CSRF y campo oculto para formularios
+     * 
+     * @return string HTML con campo oculto del token CSRF
+     */
+    public static function generateCSRFToken() {
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+    }
+    
+    /**
+     * Verificar token CSRF
+     * 
+     * @param string $token Token a verificar
+     * @return bool True si es válido
+     */
+    public static function verifyCSRFToken($token) {
+        return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    }
+    
+    /**
+     * Escapar salida HTML
+     * 
+     * @param string $string Cadena a escapar
+     * @return string Cadena escapada
+     */
+    public static function escape($string) {
+        return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
+    }
+    
+    /**
+     * Formatear fecha para mostrar
+     * 
+     * @param string $date Fecha en formato Y-m-d H:i:s
+     * @param string $format Formato de salida
+     * @return string Fecha formateada
+     */
+    public static function formatDate($date, $format = 'd/m/Y H:i') {
+        if (empty($date) || $date === '0000-00-00 00:00:00') {
+            return '-';
+        }
+        
+        try {
+            $datetime = new DateTime($date);
+            return $datetime->format($format);
+        } catch (Exception $e) {
+            return $date;
+        }
+    }
+    
+    /**
+     * Formatear moneda costarricense
+     * 
+     * @param float $amount Cantidad
+     * @return string Cantidad formateada
+     */
+    public static function formatMoney($amount) {
+        return '₡' . number_format($amount, 0, ',', '.');
+    }
+    
+    /**
+     * Generar opciones para select
+     * 
+     * @param array $options Array asociativo con value => label
+     * @param mixed $selected Valor seleccionado
+     * @return string HTML con las opciones
+     */
+    public static function generateSelectOptions($options, $selected = null) {
+        $html = '';
+        foreach ($options as $value => $label) {
+            $selectedAttr = ($value == $selected) ? ' selected' : '';
+            $html .= '<option value="' . htmlspecialchars($value) . '"' . $selectedAttr . '>';
+            $html .= htmlspecialchars($label) . '</option>';
+        }
+        return $html;
+    }
+    
+    /**
+     * Truncar texto
+     * 
+     * @param string $text Texto a truncar
+     * @param int $length Longitud máxima
+     * @param string $suffix Sufijo a agregar
+     * @return string Texto truncado
+     */
+    public static function truncate($text, $length = 100, $suffix = '...') {
+        if (strlen($text) <= $length) {
+            return $text;
+        }
+        
+        return substr($text, 0, $length) . $suffix;
+    }
+    
+    /**
+     * Generar URL con parámetros
+     * 
+     * @param string $path Ruta base
+     * @param array $params Parámetros GET
+     * @return string URL completa
+     */
+    public static function url($path, $params = []) {
+        $url = BASE_URL . '/' . ltrim($path, '/');
+        
+        if (!empty($params)) {
+            $url .= '?' . http_build_query($params);
+        }
+        
+        return $url;
+    }
+}

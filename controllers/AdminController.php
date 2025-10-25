@@ -477,7 +477,7 @@ class AdminController {
      * Verificar que el usuario es admin
      */
     private function requireAdminRole() {
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;

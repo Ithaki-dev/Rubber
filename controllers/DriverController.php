@@ -516,7 +516,7 @@ class DriverController {
      * Verificar que el usuario es chofer
      */
     private function requireDriverRole() {
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;

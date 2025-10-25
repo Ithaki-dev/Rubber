@@ -214,7 +214,7 @@ class PassengerController {
      * Verificar que el usuario es pasajero
      */
     private function requirePassengerRole() {
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             Session::setFlash('error', 'Debes iniciar sesión');
             redirect('/auth/login');
             exit;

@@ -48,6 +48,28 @@ try {
     // RUTAS PÚBLICAS
     // ==========================================
     
+    // Rutas especiales que van directo al HomeController
+    if ($controller === 'home' || $controller === '' || 
+        $controller === 'about' || $controller === 'contact' || 
+        $controller === 'how-it-works') {
+        
+        require_once __DIR__ . '/../controllers/HomeController.php';
+        $homeController = new HomeController();
+        
+        // Si es una ruta directa, ajustar controller y method
+        if ($controller === 'about') {
+            $controller = 'home';
+            $method = 'about';
+        } elseif ($controller === 'contact') {
+            $controller = 'home';
+            $method = 'contact';
+        } elseif ($controller === 'how-it-works') {
+            $controller = 'home';
+            $method = 'how-it-works';
+        }
+        
+    }
+    
     if ($controller === 'home' || $controller === '') {
         require_once __DIR__ . '/../controllers/HomeController.php';
         $homeController = new HomeController();

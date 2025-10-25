@@ -79,14 +79,14 @@ class HomeController {
      * Página "Acerca de"
      */
     public function about() {
-        require_once __DIR__ . '/../views/home/about.php';
+        require_once __DIR__ . '/../views/public/about.php';
     }
     
     /**
      * Página de contacto
      */
     public function contact() {
-        require_once __DIR__ . '/../views/home/contact.php';
+        require_once __DIR__ . '/../views/public/contact.php';
     }
     
     /**
@@ -135,7 +135,7 @@ class HomeController {
      * Redirigir al dashboard correspondiente
      */
     public function dashboard() {
-        if (!Session::isAuthenticated()) {
+        if (!Session::isLoggedIn()) {
             redirect('/auth/login');
             return;
         }
