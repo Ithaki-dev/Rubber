@@ -489,4 +489,196 @@ class AdminController {
             exit;
         }
     }
+    
+    // ==========================================
+    // MÉTODOS API
+    // ==========================================
+    
+    /**
+     * API: Obtener estadísticas del dashboard
+     */
+    public function apiDashboard() {
+        $this->requireAdminRole();
+        
+        try {
+            // Estadísticas principales (KPIs)
+            $kpis = [
+                'totalUsers' => $this->userModel->getTotalCount(),
+                'totalRides' => $this->rideModel->getTotalCount(),
+                'activeReservations' => $this->reservationModel->getActiveCount(),
+                'totalRevenue' => $this->reservationModel->getTotalRevenue()
+            ];
+            
+            // Estadísticas rápidas
+            $stats = [
+                'todayRides' => $this->rideModel->getTodayCount(),
+                'newUsers' => $this->userModel->getNewUsersCount(30), // últimos 30 días
+                'avgRating' => 4.5, // TODO: implementar sistema de calificaciones
+                'activeDrivers' => $this->userModel->getActiveDriversCount()
+            ];
+            
+            // Actividad reciente (últimos 10 eventos)
+            $activity = [
+                ['icon' => 'person-plus', 'type' => 'success', 'message' => 'Nuevo usuario registrado', 'time' => '2 min'],
+                ['icon' => 'car-front', 'type' => 'info', 'message' => 'Viaje creado', 'time' => '5 min'],
+                ['icon' => 'calendar-check', 'type' => 'primary', 'message' => 'Reserva confirmada', 'time' => '10 min']
+            ];
+            
+            echo json_encode([
+                'success' => true,
+                'kpis' => $kpis,
+                'stats' => $stats,
+                'activity' => $activity
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al cargar estadísticas: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * API: Listar usuarios con filtros opcionales
+     */
+    public function apiUsers() {
+        $this->requireAdminRole();
+        
+        try {
+            // Obtener filtros de query string
+            $filters = [
+                'user_type' => $_GET['role'] ?? '',
+                'status' => $_GET['status'] ?? '',
+                'search' => $_GET['search'] ?? ''
+            ];
+            
+            // Remover filtros vacíos
+            $filters = array_filter($filters);
+            
+            // Obtener usuarios
+            $users = $this->userModel->getAll($filters);
+            
+            // Formatear datos para la tabla
+            $formattedUsers = array_map(function($user) {
+                return [
+                    'id' => $user['id'],
+                    'first_name' => $user['first_name'],
+                    'last_name' => $user['last_name'],
+                    'email' => $user['email'],
+                    'role' => $user['user_type'],
+                    'is_active' => $user['status'] === 'active',
+                    'created_at' => date('d/m/Y', strtotime($user['created_at']))
+                ];
+            }, $users);
+            
+            echo json_encode([
+                'success' => true,
+                'users' => $formattedUsers
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al cargar usuarios: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * API: Obtener usuario específico
+     */
+    public function apiUser($id) {
+        $this->requireAdminRole();
+        
+        try {
+            $user = $this->userModel->getById($id);
+            
+            if (!$user) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ]);
+                return;
+            }
+            
+            // No devolver información sensible
+            unset($user['password_hash']);
+            unset($user['activation_token']);
+            
+            echo json_encode([
+                'success' => true,
+                'user' => $user
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al cargar usuario: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * API: Generar reporte específico
+     */
+    public function apiReport($type) {
+        $this->requireAdminRole();
+        
+        try {
+            $report = null;
+            
+            switch($type) {
+                case 'users':
+                    $report = [
+                        'title' => 'Reporte de Usuarios',
+                        'description' => 'Estadísticas completas de usuarios registrados',
+                        'downloadUrl' => BASE_URL . '/admin/exports/users.pdf'
+                    ];
+                    break;
+                    
+                case 'rides':
+                    $report = [
+                        'title' => 'Reporte de Viajes',
+                        'description' => 'Análisis de viajes realizados y estadísticas',
+                        'downloadUrl' => BASE_URL . '/admin/exports/rides.pdf'
+                    ];
+                    break;
+                    
+                case 'revenue':
+                    $report = [
+                        'title' => 'Reporte Financiero',
+                        'description' => 'Ingresos y transacciones del sistema',
+                        'downloadUrl' => BASE_URL . '/admin/exports/revenue.pdf'
+                    ];
+                    break;
+                    
+                case 'activity':
+                    $report = [
+                        'title' => 'Reporte de Actividad',
+                        'description' => 'Log de actividades y uso del sistema',
+                        'downloadUrl' => BASE_URL . '/admin/exports/activity.pdf'
+                    ];
+                    break;
+                    
+                default:
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Tipo de reporte no válido'
+                    ]);
+                    return;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'report' => $report
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al generar reporte: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

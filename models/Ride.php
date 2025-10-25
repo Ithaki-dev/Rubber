@@ -525,4 +525,26 @@ class Ride {
             'errors' => $errors
         ];
     }
+    
+    /**
+     * Obtener total de viajes
+     * @return int
+     */
+    public function getTotalCount() {
+        $query = "SELECT COUNT(*) as total FROM rides";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
+    
+    /**
+     * Obtener viajes de hoy
+     * @return int
+     */
+    public function getTodayCount() {
+        $query = "SELECT COUNT(*) as total FROM rides WHERE DATE(ride_date) = CURDATE()";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
 }

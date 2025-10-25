@@ -438,4 +438,38 @@ class User {
             'errors' => $errors
         ];
     }
+    
+    /**
+     * Obtener total de usuarios registrados
+     * @return int
+     */
+    public function getTotalCount() {
+        $query = "SELECT COUNT(*) as total FROM users";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
+    
+    /**
+     * Obtener usuarios nuevos en los últimos N días
+     * @param int $days Número de días
+     * @return int
+     */
+    public function getNewUsersCount($days = 30) {
+        $query = "SELECT COUNT(*) as total FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)";
+        $result = $this->db->query($query, [$days]);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
+    
+    /**
+     * Obtener conductores activos
+     * @return int
+     */
+    public function getActiveDriversCount() {
+        $query = "SELECT COUNT(*) as total FROM users WHERE user_type = 'driver' AND status = 'active'";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
 }

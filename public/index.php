@@ -45,6 +45,52 @@ $httpMethod = $_SERVER['REQUEST_METHOD'];
 
 try {
     // ==========================================
+    // RUTAS API
+    // ==========================================
+    
+    if ($controller === 'api') {
+        header('Content-Type: application/json');
+        
+        if ($method === 'admin') {
+            require_once __DIR__ . '/../controllers/AdminController.php';
+            $adminController = new AdminController();
+            
+            $apiAction = $params[0] ?? '';
+            $apiId = $params[1] ?? '';
+            
+            switch($apiAction) {
+                case 'dashboard':
+                    $adminController->apiDashboard();
+                    break;
+                    
+                case 'users':
+                    if ($httpMethod === 'GET') {
+                        if (empty($apiId)) {
+                            // GET /api/admin/users - Listar usuarios
+                            $adminController->apiUsers();
+                        } else {
+                            // GET /api/admin/users/{id} - Usuario específico
+                            $adminController->apiUser($apiId);
+                        }
+                    }
+                    break;
+                    
+                case 'reports':
+                    if (!empty($apiId)) {
+                        // GET /api/admin/reports/{type}
+                        $adminController->apiReport($apiId);
+                    }
+                    break;
+                    
+                default:
+                    echo json_encode(['success' => false, 'message' => 'API endpoint not found']);
+                    break;
+            }
+            exit;
+        }
+    }
+    
+    // ==========================================
     // RUTAS PÚBLICAS
     // ==========================================
     

@@ -431,6 +431,8 @@ ob_start();
 </div>
 
 <script>
+const BASE_URL = '<?= BASE_URL ?>';
+
 document.addEventListener('DOMContentLoaded', function() {
     // Navigation
     const navLinks = document.querySelectorAll('.nav-link[data-section]');

@@ -43,11 +43,11 @@
                                 <?= htmlspecialchars($user['first_name']) ?>
                             </a>
                             <ul class="dropdown-menu">
-                                <?php if ($user['role'] === 'admin'): ?>
+                                <?php if ($user['user_type'] === 'admin'): ?>
                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/dashboard">
                                         <i class="bi bi-speedometer2 me-2"></i>Panel Admin
                                     </a></li>
-                                <?php elseif ($user['role'] === 'driver'): ?>
+                                <?php elseif ($user['user_type'] === 'driver'): ?>
                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/driver/dashboard">
                                         <i class="bi bi-speedometer2 me-2"></i>Panel Conductor
                                     </a></li>

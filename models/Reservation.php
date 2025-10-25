@@ -500,4 +500,26 @@ class Reservation {
             'errors' => $errors
         ];
     }
+    
+    /**
+     * Obtener reservas activas
+     * @return int
+     */
+    public function getActiveCount() {
+        $query = "SELECT COUNT(*) as total FROM reservations WHERE status IN ('pending', 'accepted')";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (int)$data['total'];
+    }
+    
+    /**
+     * Obtener total de ingresos
+     * @return float
+     */
+    public function getTotalRevenue() {
+        $query = "SELECT COALESCE(SUM(total_cost), 0) as total FROM reservations WHERE status = 'accepted'";
+        $result = $this->db->query($query);
+        $data = $result->fetch();
+        return (float)$data['total'];
+    }
 }

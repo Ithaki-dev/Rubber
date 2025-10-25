@@ -148,8 +148,12 @@ class AuthController {
             // Guardar datos en sesión
             Session::set('user_id', $result['user']['id']);
             Session::set('user_type', $result['user']['user_type']);
+            Session::set('first_name', $result['user']['first_name']);
+            Session::set('last_name', $result['user']['last_name']);
             Session::set('user_name', $result['user']['first_name'] . ' ' . $result['user']['last_name']);
             Session::set('user_email', $result['user']['email']);
+            Session::set('phone', $result['user']['phone'] ?? '');
+            Session::set('student_id', $result['user']['cedula'] ?? '');
             Session::set('user_photo', $result['user']['photo_path']);
             
             // Regenerar session ID por seguridad

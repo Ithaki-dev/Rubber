@@ -102,12 +102,12 @@ class Session {
     public static function getCurrentUser() {
         return [
             'id' => self::get('user_id'),
-            'first_name' => self::get('first_name'),
-            'last_name' => self::get('last_name'),
-            'email' => self::get('user_email'),
-            'phone' => self::get('phone'),
-            'student_id' => self::get('student_id'),
-            'user_type' => self::get('user_type')
+            'first_name' => self::get('first_name', 'Usuario'),
+            'last_name' => self::get('last_name', ''),
+            'email' => self::get('user_email', ''),
+            'phone' => self::get('phone', ''),
+            'student_id' => self::get('student_id', ''),
+            'user_type' => self::get('user_type', 'guest')
         ];
     }
 
