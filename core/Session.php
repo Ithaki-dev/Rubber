@@ -149,6 +149,16 @@ class Session {
     }
 
     /**
+     * Alias para setFlashMessage() - Compatibilidad
+     * 
+     * @param string $type Tipo de mensaje (success, error, warning, info)
+     * @param string $message Mensaje
+     */
+    public static function setFlash($type, $message) {
+        self::setFlashMessage($type, $message);
+    }
+
+    /**
      * Obtener y eliminar mensaje flash
      * 
      * @return array|null
