@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mensaje de Contacto - Carpooling UTN</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background: white; 
+            border-radius: 15px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+        .header { 
+            background: linear-gradient(135deg, #6f42c1, #563d7c); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+        }
+        .content { 
+            padding: 40px 30px; 
+        }
+        .info-box { 
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
+            border-left: 5px solid #6f42c1; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 10px; 
+        }
+        .message-box { 
+            background: #e9ecef; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin: 25px 0; 
+            border: 1px solid #dee2e6;
+        }
+        .sender-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #6f42c1;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #495057;
+            font-size: 16px;
+        }
+        .footer { 
+            background: #343a40; 
+            color: #adb5bd; 
+            padding: 25px; 
+            text-align: center; 
+            font-size: 13px; 
+        }
+        .highlight { 
+            color: #6f42c1; 
+            font-weight: 600; 
+        }
+        .priority-badge {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #212529;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .timestamp {
+            color: #6c757d;
+            font-size: 14px;
+            text-align: right;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="font-size: 32px; font-weight: bold; margin-bottom: 10px;">📧 Carpooling UTN</div>
+            <h2 style="margin: 0; font-size: 24px;">Mensaje de Contacto</h2>
+            <p style="margin: 15px 0 0 0; opacity: 0.9;">Sistema de soporte</p>
+        </div>
+        
+        <div class="content">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <h3 style="color: #6f42c1; font-size: 22px; margin: 0;">Nuevo mensaje recibido</h3>
+                <span class="priority-badge">📬 NUEVO</span>
+            </div>
+            
+            <div class="info-box">
+                <h4 style="margin-top: 0; color: #495057;">👤 Información del remitente</h4>
+                <div class="sender-info">
+                    <div class="info-item">
+                        <div class="info-label">Nombre completo</div>
+                        <div class="info-value">{{SENDER_NAME}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Correo electrónico</div>
+                        <div class="info-value">{{SENDER_EMAIL}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin: 25px 0;">
+                <h4 style="margin-bottom: 10px; color: #495057;">📝 Asunto del mensaje:</h4>
+                <div style="background: white; border: 2px solid #6f42c1; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: 600; color: #6f42c1;">
+                    {{SUBJECT}}
+                </div>
+            </div>
+            
+            <div class="message-box">
+                <h4 style="margin-top: 0; color: #495057;">💬 Contenido del mensaje:</h4>
+                <div style="background: white; padding: 20px; border-radius: 8px; white-space: pre-wrap; line-height: 1.8; font-size: 15px;">{{MESSAGE}}</div>
+                
+                <div class="timestamp">
+                    📅 Recibido el {{TIMESTAMP}}
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #d1ecf1, #bee5eb); border-left: 5px solid #17a2b8; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                <h4 style="margin-top: 0; color: #495057;">📞 Instrucciones para responder:</h4>
+                <ul style="margin: 10px 0 0 20px; padding: 0;">
+                    <li>Responde directamente a: <strong class="highlight">{{SENDER_EMAIL}}</strong></li>
+                    <li>Tiempo de respuesta recomendado: <strong>24 horas</strong></li>
+                    <li>Categoría: <strong>{{SUBJECT}}</strong></li>
+                    <li>Prioridad: <strong>Normal</strong></li>
+                </ul>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-left: 5px solid #ffc107; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                <p style="margin: 0; font-weight: 600;">💡 Recordatorio:</p>
+                <p style="margin: 10px 0 0 0;">Mantén un tono profesional y amable. Representa a la Universidad Técnica Nacional.</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                <p style="font-size: 16px; margin: 0; color: #495057;">
+                    📬 <strong>Email de respuesta:</strong><br>
+                    <span class="highlight" style="font-size: 18px;">{{SENDER_EMAIL}}</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p style="margin: 0 0 10px 0; font-weight: 600;">Universidad Técnica Nacional</p>
+            <p style="margin: 0 0 10px 0;">Sistema de Carpooling Estudiantil - Soporte</p>
+            <p style="margin: 0; font-size: 12px;">© 2025 UTN - Todos los derechos reservados</p>
+            <p style="margin: 15px 0 0 0; opacity: 0.7; font-size: 11px;">
+                Mensaje automático del sistema de contacto
+            </p>
+        </div>
+    </div>
+</body>
+</html>

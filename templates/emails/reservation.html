@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva Confirmada - Carpooling UTN</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background: white; 
+            border-radius: 15px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+        .header { 
+            background: linear-gradient(135deg, #17a2b8, #138496); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+        }
+        .content { 
+            padding: 40px 30px; 
+        }
+        .ticket { 
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
+            border: 3px dashed #6c757d; 
+            padding: 25px; 
+            border-radius: 15px; 
+            margin: 25px 0; 
+            position: relative;
+        }
+        .ticket::before {
+            content: "🎫";
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: white;
+            padding: 0 10px;
+            font-size: 24px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
+            align-items: center;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 18px;
+            color: #17a2b8;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .detail-value {
+            color: #212529;
+            text-align: right;
+        }
+        .instructions {
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            border-left: 5px solid #17a2b8;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 10px;
+        }
+        .footer { 
+            background: #343a40; 
+            color: #adb5bd; 
+            padding: 25px; 
+            text-align: center; 
+            font-size: 13px; 
+        }
+        .highlight { 
+            color: #17a2b8; 
+            font-weight: 600; 
+        }
+        .status-badge {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .route-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 25px 0;
+            font-size: 18px;
+        }
+        .route-arrow {
+            margin: 0 15px;
+            color: #17a2b8;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="font-size: 32px; font-weight: bold; margin-bottom: 10px;">🎫 Carpooling UTN</div>
+            <h2 style="margin: 0; font-size: 24px;">Reserva Confirmada</h2>
+            <div style="margin-top: 15px;">
+                <span class="status-badge">✅ CONFIRMADA</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h3 style="color: #17a2b8; font-size: 22px; text-align: center;">¡Tu reserva está lista! 🎉</h3>
+            
+            <div class="route-visual">
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">📍</div>
+                    <div style="font-size: 14px; margin-top: 5px;">{{ORIGIN}}</div>
+                </div>
+                <div class="route-arrow">→</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">🏁</div>
+                    <div style="font-size: 14px; margin-top: 5px;">{{DESTINATION}}</div>
+                </div>
+            </div>
+            
+            <div class="ticket">
+                <h4 style="margin-top: 15px; margin-bottom: 20px; color: #495057;">📋 Detalles de tu viaje</h4>
+                
+                <div class="detail-row">
+                    <span class="detail-label">📅 Fecha:</span>
+                    <span class="detail-value">{{DATE}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">🕐 Hora de salida:</span>
+                    <span class="detail-value">{{TIME}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">📍 Punto de encuentro:</span>
+                    <span class="detail-value">{{ORIGIN}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">🏁 Destino:</span>
+                    <span class="detail-value">{{DESTINATION}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">👥 Asientos reservados:</span>
+                    <span class="detail-value">{{SEATS}} persona(s)</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">💰 Costo total:</span>
+                    <span class="detail-value">₡{{COST}}</span>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h4 style="margin-top: 0; color: #495057;">📝 Instrucciones importantes:</h4>
+                <ul style="margin: 15px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 10px;">🕐 <strong>Puntualidad:</strong> Llega 5 minutos antes al punto de encuentro</li>
+                    <li style="margin-bottom: 10px;">💵 <strong>Pago:</strong> Ten tu dinero exacto preparado (₡{{COST}})</li>
+                    <li style="margin-bottom: 10px;">📱 <strong>Contacto:</strong> El conductor te contactará si hay cambios</li>
+                    <li style="margin-bottom: 10px;">🎒 <strong>Equipaje:</strong> Solo equipaje de mano permitido</li>
+                    <li style="margin-bottom: 10px;">😷 <strong>Salud:</strong> Respeta las medidas sanitarias</li>
+                </ul>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-left: 5px solid #ffc107; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                <p style="margin: 0; font-weight: 600;">💡 Consejo:</p>
+                <p style="margin: 10px 0 0 0;">Guarda este email para mostrar tu reserva si es necesario. ¡Que tengas un excelente viaje!</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <p style="font-size: 18px; color: #17a2b8; font-weight: 600;">
+                    ¡Gracias por elegir Carpooling UTN! 🚗💙
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p style="margin: 0 0 10px 0; font-weight: 600;">Universidad Técnica Nacional</p>
+            <p style="margin: 0 0 10px 0;">Sistema de Carpooling Estudiantil</p>
+            <p style="margin: 0; font-size: 12px;">© 2025 UTN - Todos los derechos reservados</p>
+            <p style="margin: 15px 0 0 0; opacity: 0.7; font-size: 11px;">
+                Para soporte: contacto@carpooling-utn.cr
+            </p>
+        </div>
+    </div>
+</body>
+</html>
