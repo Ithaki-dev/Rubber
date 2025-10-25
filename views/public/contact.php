@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Contacto - Carpooling UCR";
+$pageTitle = "Contacto - Carpooling UTN";
 ob_start();
 ?>
 
@@ -17,7 +17,13 @@ ob_start();
                     <p class="text-muted mb-4">¿Tienes preguntas, sugerencias o necesitas ayuda? Completa el formulario y nos pondremos en contacto contigo lo antes posible.</p>
                     
                     <form id="contactForm" class="needs-validation" novalidate>
-                        <?= Helpers::generateCSRFToken() ?>
+                        <?php
+                        // Generar token CSRF
+                        if (!isset($_SESSION['csrf_token'])) {
+                            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                        }
+                        echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+                        ?>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -149,7 +155,7 @@ ob_start();
                             <i class="bi bi-envelope-fill text-primary me-3 fs-5"></i>
                             <div>
                                 <strong>Email</strong><br>
-                                <a href="mailto:carpooling@ucr.ac.cr">carpooling@ucr.ac.cr</a>
+                                <a href="mailto:rtquesada@est.utn.ac.cr">rtquesada@est.utn.ac.cr</a>
                             </div>
                         </div>
                     </div>
@@ -159,7 +165,7 @@ ob_start();
                             <i class="bi bi-telephone-fill text-primary me-3 fs-5"></i>
                             <div>
                                 <strong>Teléfono</strong><br>
-                                <a href="tel:+50625114000">(506) 2511-4000</a>
+                                <a href="tel:+50660437458">(506) 6043-7458</a>
                             </div>
                         </div>
                     </div>
@@ -169,9 +175,9 @@ ob_start();
                             <i class="bi bi-geo-alt-fill text-primary me-3 fs-5"></i>
                             <div>
                                 <strong>Ubicación</strong><br>
-                                Universidad de Costa Rica<br>
-                                Ciudad Universitaria Rodrigo Facio<br>
-                                San José, Costa Rica
+                                Universidad Técnica Nacional<br>
+                                Campus San Carlos<br>
+                                San Carlos, Costa Rica
                             </div>
                         </div>
                     </div>
@@ -206,7 +212,7 @@ ob_start();
                             </h6>
                             <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                                 <div class="accordion-body">
-                                    <small>Puedes registrarte usando tu correo UCR o cualquier correo válido. Solo necesitas completar el formulario de registro.</small>
+                                    <small>Puedes registrarte usando tu correo UTN o cualquier correo válido. Solo necesitas completar el formulario de registro.</small>
                                 </div>
                             </div>
                         </div>

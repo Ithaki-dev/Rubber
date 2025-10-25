@@ -1,5 +1,5 @@
 <?php
-$pageTitle = "Sobre Nosotros - Carpooling UCR";
+$pageTitle = "Sobre Nosotros - Carpooling UTN";
 ob_start();
 ?>
 
@@ -9,7 +9,7 @@ ob_start();
             <!-- Hero Section -->
             <div class="text-center mb-5">
                 <i class="bi bi-car-front-fill display-1 text-primary mb-3"></i>
-                <h1 class="display-4 fw-bold mb-3">Sobre Carpooling UCR</h1>
+                <h1 class="display-4 fw-bold mb-3">Sobre Carpooling UTN</h1>
                 <p class="lead text-muted">Conectamos estudiantes para crear una comunidad de transporte colaborativo, seguro y sostenible.</p>
             </div>
 
@@ -20,7 +20,7 @@ ob_start();
                         <div class="card-body text-center p-4">
                             <i class="bi bi-bullseye display-4 text-primary mb-3"></i>
                             <h3 class="h4 fw-bold mb-3">Nuestra Misión</h3>
-                            <p class="text-muted">Facilitar el transporte compartido entre estudiantes de la UCR, promoviendo la colaboración, reduciendo costos y contribuyendo a un ambiente más sostenible.</p>
+                            <p class="text-muted">Facilitar el transporte compartido entre estudiantes de la UTN, promoviendo la colaboración, reduciendo costos y contribuyendo a un ambiente más sostenible.</p>
                         </div>
                     </div>
                 </div>
@@ -82,7 +82,7 @@ ob_start();
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h5 class="fw-bold">Regístrate</h5>
-                                <p class="text-muted mb-0">Crea tu cuenta como conductor o pasajero usando tu correo UCR.</p>
+                                <p class="text-muted mb-0">Crea tu cuenta como conductor o pasajero usando tu correo UTN.</p>
                             </div>
                         </div>
                     </div>
@@ -159,13 +159,13 @@ ob_start();
                     <div class="col-md-4 mb-3">
                         <div class="d-flex align-items-center justify-content-center">
                             <i class="bi bi-envelope-fill text-primary me-2"></i>
-                            <span>carpooling@ucr.ac.cr</span>
+                            <span>rtquesada@est.utn.ac.cr</span>
                         </div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="d-flex align-items-center justify-content-center">
                             <i class="bi bi-telephone-fill text-primary me-2"></i>
-                            <span>(506) 2511-4000</span>
+                            <span>(506) 6043-7458</span>
                         </div>
                     </div>
                     <div class="col-md-4 mb-3">
