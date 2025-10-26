@@ -131,6 +131,16 @@ try {
                     }
                     break;
                     
+                case 'settings':
+                    if ($httpMethod === 'GET') {
+                        // GET /api/admin/settings - Obtener configuraciones
+                        $adminController->apiGetSettings();
+                    } elseif ($httpMethod === 'POST') {
+                        // POST /api/admin/settings - Actualizar configuraciones
+                        $adminController->apiUpdateSettings();
+                    }
+                    break;
+                    
                 case 'reports':
                     if (!empty($apiId)) {
                         // GET /api/admin/reports/{type}
