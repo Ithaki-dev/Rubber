@@ -64,6 +64,7 @@ try {
                     break;
                     
                 case 'users':
+                    error_log("API Users route - Method: $httpMethod, ID: $apiId");
                     if ($httpMethod === 'GET') {
                         if (empty($apiId)) {
                             // GET /api/admin/users - Listar usuarios
@@ -71,6 +72,21 @@ try {
                         } else {
                             // GET /api/admin/users/{id} - Usuario específico
                             $adminController->apiUser($apiId);
+                        }
+                    } elseif ($httpMethod === 'POST') {
+                        if (empty($apiId)) {
+                            // POST /api/admin/users - Crear usuario
+                            error_log("Calling createUser for new user creation");
+                            $adminController->createUser();
+                        } else {
+                            $subAction = $params[2] ?? '';
+                            if ($subAction === 'toggle') {
+                                // POST /api/admin/users/{id}/toggle - Cambiar estado
+                                $adminController->apiToggleUserStatus($apiId);
+                            } else {
+                                // POST /api/admin/users/{id} - Actualizar usuario
+                                $adminController->updateUser($apiId);
+                            }
                         }
                     }
                     break;
@@ -439,7 +455,7 @@ try {
             case 'users':
                 if ($httpMethod === 'POST' && !isset($params[0])) {
                     // POST /admin/users - Crear
-                    $adminController->storeUser();
+                    $adminController->createUser();
                 } elseif (isset($params[0])) {
                     if (isset($params[1])) {
                         // Acciones específicas
@@ -465,15 +481,15 @@ try {
                         if ($httpMethod === 'POST') {
                             $adminController->updateUser($params[0]);
                         } else {
-                            $adminController->showUser($params[0]);
+                            $adminController->searchUserById($params[0]);
                         }
                     }
                 } elseif (isset($url[2]) && $url[2] === 'create') {
                     // GET /admin/users/create
-                    $adminController->createUser();
+                    $adminController->showCreateUserForm();
                 } else {
                     // GET /admin/users - Listar
-                    $adminController->users();
+                    $adminController->listUsers();
                 }
                 break;
             
