@@ -145,14 +145,63 @@ class Validator {
 
     /**
      * Validar formato de fecha
-     * 
+     *
      * @param string $date Fecha
      * @param string $format Formato
      * @return bool
      */
-    private function validateDate($date, $format = 'Y-m-d') {
+    public function validateDate($date, $format = 'Y-m-d') {
         $d = DateTime::createFromFormat($format, $date);
         return $d && $d->format($format) === $date;
+    }
+
+    /**
+     * Validar formato de hora (HH:MM)
+     *
+     * @param string $time Hora
+     * @param string $format Formato
+     * @return bool
+     */
+    public function validateTime($time, $format = 'H:i') {
+        $t = DateTime::createFromFormat($format, $time);
+        return $t && $t->format($format) === $time;
+    }
+
+    /**
+     * Validar precio (número >= 0)
+     *
+     * @param mixed $price
+     * @return bool
+     */
+    public function validatePrice($price) {
+        if ($price === '' || $price === null) return false;
+        if (!is_numeric($price)) return false;
+        return floatval($price) >= 0;
+    }
+
+    /**
+     * Validar año razonable
+     *
+     * @param mixed $year
+     * @return bool
+     */
+    public function validateYear($year) {
+        if (!ctype_digit((string)$year)) return false;
+        $y = (int)$year;
+        $current = (int)date('Y');
+        return $y >= 1900 && $y <= ($current + 1);
+    }
+
+    /**
+     * Validar entero positivo
+     *
+     * @param mixed $v
+     * @return bool
+     */
+    public function validatePositiveInt($v) {
+        if ($v === '' || $v === null) return false;
+        if (!is_numeric($v)) return false;
+        return filter_var($v, FILTER_VALIDATE_INT) !== false && (int)$v >= 0;
     }
 
     /**
