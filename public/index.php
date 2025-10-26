@@ -476,12 +476,18 @@ try {
                                 break;
                         }
                     } else {
-                        // POST /admin/users/{id} - Actualizar
-                        // GET /admin/users/{id} - Ver
-                        if ($httpMethod === 'POST') {
-                            $adminController->updateUser($params[0]);
+                        // Manejar sub-rutas no numéricas (export) o ids
+                        if ($params[0] === 'export') {
+                            // GET /admin/users/export - Descargar CSV
+                            $adminController->exportUsers();
                         } else {
-                            $adminController->searchUserById($params[0]);
+                            // POST /admin/users/{id} - Actualizar
+                            // GET /admin/users/{id} - Ver
+                            if ($httpMethod === 'POST') {
+                                $adminController->updateUser($params[0]);
+                            } else {
+                                $adminController->searchUserById($params[0]);
+                            }
                         }
                     }
                 } elseif (isset($url[2]) && $url[2] === 'create') {

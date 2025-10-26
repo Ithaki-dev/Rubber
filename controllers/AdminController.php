@@ -77,6 +77,59 @@ class AdminController {
         
         require_once __DIR__ . '/../views/admin/users/index.php';
     }
+
+    /**
+     * Exportar usuarios a CSV (descarga)
+     * URL: /admin/users/export
+     */
+    public function exportUsers() {
+        // Asegurar permisos
+        $this->requireAdminRole();
+
+        // Obtener filtros de query string
+        $filters = [];
+        $role = sanitize($_GET['role'] ?? $_GET['user_type'] ?? '');
+        $status = sanitize($_GET['status'] ?? '');
+        $search = sanitize($_GET['search'] ?? '');
+
+        if ($role) $filters['user_type'] = $role;
+        if ($status) $filters['status'] = $status;
+        if ($search) $filters['search'] = $search;
+
+        // Obtener usuarios
+        $users = $this->userModel->getAll($filters);
+
+        // Forzar descarga CSV
+        $filename = 'users_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        // BOM para Excel (opcional)
+        echo "\xEF\xBB\xBF";
+
+        $out = fopen('php://output', 'w');
+        // Cabecera CSV
+        fputcsv($out, ['ID', 'Nombre', 'Apellido', 'Email', 'Tipo', 'Estado', 'Teléfono', 'Cédula', 'Creado', 'Último Acceso']);
+
+        foreach ($users as $u) {
+            $row = [
+                $u['id'],
+                $u['first_name'] ?? '',
+                $u['last_name'] ?? '',
+                $u['email'] ?? '',
+                $u['user_type'] ?? '',
+                $u['status'] ?? '',
+                $u['phone'] ?? '',
+                $u['cedula'] ?? '',
+                isset($u['created_at']) ? $u['created_at'] : '',
+                isset($u['last_login']) ? $u['last_login'] : ''
+            ];
+            fputcsv($out, $row);
+        }
+
+        fclose($out);
+        exit;
+    }
     
     /**
      * Buscar y mostrar detalles de usuario específico

@@ -516,7 +516,6 @@ function renderUsersTable(users) {
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>ID</th>
                         <th>Usuario</th>
                         <th>Contacto</th>
                         <th>Tipo</th>
@@ -529,7 +528,6 @@ function renderUsersTable(users) {
                 <tbody>
                     ${users.map(user => `
                         <tr>
-                            <td><strong>#${user.user_id}</strong></td>
                             <td>
                                 <div>
                                     <div class="fw-semibold">${user.first_name} ${user.last_name}</div>
@@ -894,11 +892,22 @@ function confirmDeleteUser() {
 }
 
 function exportUsers() {
-    // Simular exportación
-    showAlert('info', 'Generando archivo de exportación...');
-    setTimeout(() => {
-        showAlert('success', 'Archivo de usuarios exportado exitosamente');
-    }, 2000);
+    // Exportar usuarios filtrados a CSV (descarga del servidor)
+    const role = document.getElementById('userTypeFilter') ? document.getElementById('userTypeFilter').value : '';
+    const status = document.getElementById('userStatusFilter') ? document.getElementById('userStatusFilter').value : '';
+    const search = document.getElementById('userSearchInput') ? document.getElementById('userSearchInput').value : '';
+
+    showAlert('info', 'Preparando archivo de exportación...');
+
+    const params = [];
+    if (role) params.push('role=' + encodeURIComponent(role));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (search) params.push('search=' + encodeURIComponent(search));
+
+    const url = `${BASE_URL}/admin/users/export` + (params.length ? ('?' + params.join('&')) : '');
+
+    // Redirigir a la URL para que el servidor entregue el CSV (Content-Disposition: attachment)
+    window.location.href = url;
 }
 
 // Manejar envío del formulario de usuario
