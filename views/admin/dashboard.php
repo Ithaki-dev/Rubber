@@ -494,10 +494,16 @@ function loadUsersData() {
 function renderUsersTable(users) {
     const container = document.getElementById('usersTableContainer');
     const totalCount = document.getElementById('totalUsersCount');
+    // Ordenar por ID de usuario (menor a mayor) antes de renderizar
+    const sortedUsers = Array.isArray(users) ? users.slice().sort((a, b) => {
+        const ai = Number(a.user_id ?? a.id ?? 0);
+        const bi = Number(b.user_id ?? b.id ?? 0);
+        return ai - bi;
+    }) : [];
+
+    totalCount.textContent = sortedUsers.length;
     
-    totalCount.textContent = users.length;
-    
-    if (users.length === 0) {
+    if (sortedUsers.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5">
                 <i class="bi bi-people display-4 text-muted"></i>
@@ -526,7 +532,7 @@ function renderUsersTable(users) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${users.map(user => `
+                    ${sortedUsers.map(user => `
                         <tr>
                             <td>
                                 <div>
