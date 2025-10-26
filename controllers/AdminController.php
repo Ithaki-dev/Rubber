@@ -569,6 +569,106 @@ class AdminController {
         
         require_once __DIR__ . '/../views/admin/vehicles/index.php';
     }
+
+    /**
+     * Crear vehículo (admin) - acepta POST
+     */
+    public function createVehicle() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect('/admin/vehicles');
+            return;
+        }
+
+        $data = [
+            'driver_id' => sanitize($_POST['driver_id'] ?? ''),
+            'plate_number' => sanitize($_POST['plate_number'] ?? ''),
+            'color' => sanitize($_POST['color'] ?? ''),
+            'brand' => sanitize($_POST['brand'] ?? ''),
+            'model' => sanitize($_POST['model'] ?? ''),
+            'year' => sanitize($_POST['year'] ?? ''),
+            'seats_capacity' => sanitize($_POST['seats_capacity'] ?? ''),
+            'is_active' => isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1
+        ];
+
+        // Manejar foto del vehículo
+        if (!empty($_FILES['photo']['name'])) {
+            $upload_result = uploadFile($_FILES['photo'], 'vehicles');
+            if ($upload_result['success']) {
+                $data['photo_path'] = $upload_result['path'];
+            }
+        }
+
+        $result = $this->vehicleModel->create($data);
+
+        if ($this->isAjaxRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result);
+            exit;
+        }
+
+        if ($result['success']) {
+            Session::setFlash('success', $result['message']);
+        } else {
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
+        }
+
+        redirect('/admin/vehicles');
+    }
+
+    /**
+     * Actualizar vehículo (admin)
+     */
+    public function updateVehicle($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect('/admin/vehicles');
+            return;
+        }
+
+        $vehicle = $this->vehicleModel->findById($id);
+        if (!$vehicle) {
+            Session::setFlash('error', 'Vehículo no encontrado');
+            redirect('/admin/vehicles');
+            return;
+        }
+
+        $data = [
+            'plate_number' => sanitize($_POST['plate_number'] ?? ''),
+            'color' => sanitize($_POST['color'] ?? ''),
+            'brand' => sanitize($_POST['brand'] ?? ''),
+            'model' => sanitize($_POST['model'] ?? ''),
+            'year' => sanitize($_POST['year'] ?? ''),
+            'seats_capacity' => sanitize($_POST['seats_capacity'] ?? ''),
+            'is_active' => isset($_POST['is_active']) ? (int)$_POST['is_active'] : $vehicle['is_active']
+        ];
+
+        // Manejar nueva foto
+        if (!empty($_FILES['photo']['name'])) {
+            $upload_result = uploadFile($_FILES['photo'], 'vehicles');
+            if ($upload_result['success']) {
+                $data['photo_path'] = $upload_result['path'];
+                if (!empty($vehicle['photo_path'])) {
+                    deleteFile($vehicle['photo_path']);
+                }
+            }
+        }
+
+        $result = $this->vehicleModel->update($id, $data);
+
+        if ($this->isAjaxRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result);
+            exit;
+        }
+
+        if ($result['success']) {
+            Session::setFlash('success', $result['message']);
+        } else {
+            Session::setFlash('error', $result['message']);
+        }
+
+        redirect('/admin/vehicles');
+    }
     
     /**
      * Ver detalles de vehículo
@@ -594,7 +694,13 @@ class AdminController {
     public function deleteVehicle($id) {
         $vehicle = $this->vehicleModel->findById($id);
         if (!$vehicle) {
-            Session::setFlash('error', 'Vehículo no encontrado');
+            $message = 'Vehículo no encontrado';
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $message]);
+                exit;
+            }
+            Session::setFlash('error', $message);
             redirect('/admin/vehicles');
             return;
         }
@@ -605,12 +711,60 @@ class AdminController {
             if (!empty($vehicle['photo_path'])) {
                 deleteFile($vehicle['photo_path']);
             }
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+                exit;
+            }
             Session::setFlash('success', $result['message']);
         } else {
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+                exit;
+            }
             Session::setFlash('error', $result['message']);
         }
-        
+
         redirect('/admin/vehicles');
+    }
+
+    /**
+     * API: Listar vehículos (JSON) para el dashboard admin
+     */
+    public function apiVehicles() {
+        $this->requireAdminRole();
+
+        try {
+            $filters = [
+                'is_active' => isset($_GET['active']) ? (int)$_GET['active'] : null,
+                'search' => $_GET['search'] ?? ''
+            ];
+            $filters = array_filter($filters, function($v){ return $v !== null && $v !== ''; });
+
+            $vehicles = $this->vehicleModel->getAll($filters);
+
+            $formatted = array_map(function($v) {
+                return [
+                    'id' => $v['id'],
+                    'plate_number' => $v['plate_number'] ?? $v['plate'] ?? '',
+                    'brand' => $v['brand'] ?? '',
+                    'model' => $v['model'] ?? '',
+                    'year' => $v['year'] ?? '',
+                    'seats_capacity' => isset($v['seats_capacity']) ? (int)$v['seats_capacity'] : (int)($v['capacity'] ?? 0),
+                    'is_active' => isset($v['is_active']) ? (bool)$v['is_active'] : true,
+                    'driver_id' => $v['driver_id'] ?? null,
+                    'driver_first_name' => $v['driver_first_name'] ?? '',
+                    'driver_last_name' => $v['driver_last_name'] ?? ''
+                ];
+            }, $vehicles);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'vehicles' => $formatted]);
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
     
     // ==========================================

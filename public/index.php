@@ -116,6 +116,15 @@ try {
                         }
                     }
                     break;
+                case 'vehicles':
+                    error_log("API Vehicles route - Method: $httpMethod, ID: $apiId");
+                    if ($httpMethod === 'GET') {
+                        // GET /api/admin/vehicles - Listar vehículos
+                        $adminController->apiVehicles();
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Método no permitido para vehicles']);
+                    }
+                    break;
                     
                 case 'reports':
                     if (!empty($apiId)) {
@@ -550,7 +559,19 @@ try {
             // VEHÍCULOS
             // ==========================================
             case 'vehicles':
+                // POST /admin/vehicles - crear
+                if ($httpMethod === 'POST' && !isset($params[0])) {
+                    $adminController->createVehicle();
+                    break;
+                }
+
                 if (isset($params[0])) {
+                    if ($httpMethod === 'POST' && !isset($params[1])) {
+                        // POST /admin/vehicles/{id} - actualizar
+                        $adminController->updateVehicle($params[0]);
+                        break;
+                    }
+
                     if (isset($params[1]) && $params[1] === 'delete') {
                         $adminController->deleteVehicle($params[0]);
                     } else {

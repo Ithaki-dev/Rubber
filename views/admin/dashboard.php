@@ -413,7 +413,17 @@ ob_start();
             <!-- Sección Vehículos -->
             <div id="vehicles-section" class="content-section d-none">
                 <h2><i class="bi bi-truck me-2"></i>Gestión de Vehículos</h2>
-                <p class="text-muted">Funcionalidad de vehículos en desarrollo...</p>
+                <p class="text-muted">Administrar vehículos de los choferes. Puedes crear, editar y eliminar vehículos.</p>
+
+                <div class="mb-3">
+                    <button class="btn btn-primary" onclick="showCreateVehicleModal()">
+                        <i class="bi bi-plus me-1"></i>Nuevo Vehículo
+                    </button>
+                </div>
+
+                <div id="vehiclesTableContainer">
+                    <div class="text-center py-4 text-muted">Cargando vehículos...</div>
+                </div>
             </div>
             
             <!-- Sección Reportes -->
@@ -554,6 +564,75 @@ ob_start();
         </div>
     </div>
 </div>
+
+            <!-- Modal: Crear/Editar Vehículo (Admin) -->
+            <div class="modal fade" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="vehicleModalLabel">Nuevo Vehículo</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="vehicleForm">
+                            <div class="modal-body">
+                                <input type="hidden" id="vehicleId" name="vehicleId">
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="vehicleDriver" class="form-label">Conductor *</label>
+                                        <select id="vehicleDriver" name="driver_id" class="form-select" required>
+                                            <option value="">Cargando conductores...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="plateNumber" class="form-label">Placa *</label>
+                                        <input type="text" class="form-control" id="plateNumber" name="plate_number" required>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="brand" class="form-label">Marca</label>
+                                        <input type="text" class="form-control" id="brand" name="brand">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="model" class="form-label">Modelo</label>
+                                        <input type="text" class="form-control" id="model" name="model">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="year" class="form-label">Año</label>
+                                        <input type="number" class="form-control" id="year" name="year" min="1900" max="2100">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="color" class="form-label">Color</label>
+                                        <input type="text" class="form-control" id="color" name="color">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="seatsCapacity" class="form-label">Capacidad de Asientos *</label>
+                                        <input type="number" class="form-control" id="seatsCapacity" name="seats_capacity" min="1" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="vehiclePhoto" class="form-label">Foto del Vehículo</label>
+                                    <input type="file" class="form-control" id="vehiclePhoto" name="photo" accept="image/*">
+                                    <div class="form-text">Formatos permitidos: JPG, PNG. Tamaño máximo: 5MB</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <span id="vehicleSaveText">Guardar Vehículo</span>
+                                    <span id="vehicleSaveSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
 
 <script>
 const BASE_URL = '<?= BASE_URL ?>';
@@ -862,6 +941,217 @@ function loadVehiclesForDriver(driverId, selectedVehicleId = null) {
             vehicleSelect.disabled = true;
         });
 }
+
+// ======= Vehículos (Admin) =======
+let currentVehicleId = null;
+
+function showCreateVehicleModal() {
+    currentVehicleId = null;
+    document.getElementById('vehicleModalLabel').textContent = 'Nuevo Vehículo';
+    document.getElementById('vehicleSaveText').textContent = 'Crear Vehículo';
+    document.getElementById('vehicleForm').reset();
+    loadDriversIntoVehicleModal();
+    const modal = new bootstrap.Modal(document.getElementById('vehicleModal'));
+    modal.show();
+}
+
+function loadDriversIntoVehicleModal(selectedDriverId = null) {
+    const select = document.getElementById('vehicleDriver');
+    if (!select) return;
+    select.innerHTML = '<option value="">Cargando conductores...</option>';
+    return fetch(`${BASE_URL}/admin/drivers`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                select.innerHTML = '<option value="">Error al cargar conductores</option>';
+                return;
+            }
+            const drivers = data.drivers || [];
+            select.innerHTML = '<option value="">Seleccionar conductor</option>' + drivers.map(d => `
+                <option value="${d.id}" ${selectedDriverId && d.id == selectedDriverId ? 'selected' : ''}>
+                    ${d.first_name} ${d.last_name} ${d.cedula ? ' - ' + d.cedula : ''}
+                </option>
+            `).join('');
+        })
+        .catch(err => {
+            console.error('Error loading drivers for vehicle modal', err);
+            select.innerHTML = '<option value="">Error al cargar conductores</option>';
+        });
+}
+
+function editVehicle(vehicleId) {
+    const modal = new bootstrap.Modal(document.getElementById('vehicleModal'));
+    // Cargar datos del servidor (usar admin controller showVehicle)
+    fetch(`${BASE_URL}/admin/vehicles/${vehicleId}`)
+        .then(r => r.text())
+        .then(text => {
+            // La vista /admin/vehicles/{id} puede devolver una página HTML; intentar obtener JSON desde un endpoint alterno
+            try {
+                const data = JSON.parse(text);
+                if (!data.success) throw new Error('No JSON data');
+                populateVehicleForm(data.vehicle);
+                modal.show();
+            } catch (e) {
+                // Fallback: hacer request a un endpoint API si existe
+                // Intentar GET /api/admin/vehicles/{id} (no implementado por defecto)
+                console.warn('editVehicle: response not JSON, attempting to parse HTML for form data');
+                // As a fallback, open the vehicle details page in a new tab for admin editing
+                window.open(`${BASE_URL}/admin/vehicles/${vehicleId}`, '_blank');
+            }
+        })
+        .catch(err => {
+            console.error('Error loading vehicle for edit', err);
+            showAlert('error', 'No se pudo cargar el vehículo');
+        });
+}
+
+function populateVehicleForm(vehicle) {
+    currentVehicleId = vehicle.id;
+    document.getElementById('vehicleModalLabel').textContent = 'Editar Vehículo';
+    document.getElementById('vehicleSaveText').textContent = 'Actualizar Vehículo';
+    document.getElementById('vehicleId').value = vehicle.id;
+    document.getElementById('plateNumber').value = vehicle.plate_number || vehicle.plate || '';
+    document.getElementById('brand').value = vehicle.brand || '';
+    document.getElementById('model').value = vehicle.model || '';
+    document.getElementById('year').value = vehicle.year || '';
+    document.getElementById('color').value = vehicle.color || '';
+    document.getElementById('seatsCapacity').value = vehicle.seats_capacity || vehicle.capacity || '';
+    loadDriversIntoVehicleModal(vehicle.driver_id);
+}
+
+// Submit handler for vehicle form
+document.addEventListener('DOMContentLoaded', function() {
+    const vehicleForm = document.getElementById('vehicleForm');
+    if (!vehicleForm) return;
+
+    vehicleForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fd = new FormData(vehicleForm);
+        const id = currentVehicleId;
+        const url = id ? `${BASE_URL}/admin/vehicles/${id}` : `${BASE_URL}/admin/vehicles`;
+        document.getElementById('vehicleSaveSpinner').classList.remove('d-none');
+
+        fetch(url, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: fd })
+            .then(async r => {
+                const text = await r.text();
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success) {
+                        showAlert('success', data.message || 'Vehículo guardado');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('vehicleModal'));
+                        if (modal) modal.hide();
+                        // recargar listado de vehículos si existe
+                        if (typeof loadVehiclesTable === 'function') loadVehiclesTable();
+                    } else {
+                        showAlert('error', data.message || 'Error al guardar vehículo');
+                    }
+                } catch (e) {
+                    console.error('Vehicle save raw response:', text);
+                    showAlert('error', 'Respuesta inválida del servidor. Revisa la consola.');
+                }
+            })
+            .catch(err => {
+                console.error('Error saving vehicle', err);
+                showAlert('error', 'Error de conexión');
+            })
+            .finally(() => document.getElementById('vehicleSaveSpinner').classList.add('d-none'));
+    });
+});
+
+// Simple vehicles table loader for admin (uses server-side admin list)
+function loadVehiclesTable() {
+    const container = document.getElementById('vehiclesTableContainer');
+    container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><p class="mt-2 text-muted">Cargando vehículos...</p></div>`;
+
+    const params = new URLSearchParams();
+    const active = '';
+    if (active !== '') params.append('active', active);
+
+    fetch(`${BASE_URL}/api/admin/vehicles` + (params.toString() ? ('?' + params.toString()) : ''))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                container.innerHTML = `<div class="text-center py-4 text-muted">Error: ${data.message || 'No se pudieron cargar los vehículos'}</div>`;
+                return;
+            }
+
+            const vehicles = data.vehicles || [];
+            if (vehicles.length === 0) {
+                container.innerHTML = `<div class="text-center py-4 text-muted">No hay vehículos registrados</div>`;
+                return;
+            }
+
+            const table = `
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Placa</th>
+                                <th>Chofer</th>
+                                <th>Marca / Modelo</th>
+                                <th>Año</th>
+                                <th>Seats</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${vehicles.map(v => `
+                                <tr>
+                                    <td>#${v.id}</td>
+                                    <td>${v.plate_number}</td>
+                                    <td>${v.driver_first_name} ${v.driver_last_name} ${v.driver_id ? `<small class="text-muted">(#${v.driver_id})</small>` : ''}</td>
+                                    <td>${v.brand} ${v.model}</td>
+                                    <td>${v.year || ''}</td>
+                                    <td>${v.seats_capacity}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="editVehicle(${v.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+                                            <button class="btn btn-outline-danger" onclick="deleteVehicle(${v.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = table;
+        })
+        .catch(err => {
+            console.error('Error loading admin vehicles', err);
+            container.innerHTML = `<div class="text-center py-4 text-muted">Error al cargar vehículos</div>`;
+        });
+}
+
+function deleteVehicle(vehicleId) {
+    if (!confirm('¿Seguro que deseas eliminar este vehículo?')) return;
+    fetch(`${BASE_URL}/admin/vehicles/${vehicleId}/delete`, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'} })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message || 'Vehículo eliminado');
+                loadVehiclesTable();
+            } else {
+                showAlert('error', data.message || 'Error al eliminar vehículo');
+            }
+        })
+        .catch(err => {
+            console.error('Error deleting vehicle', err);
+            showAlert('error', 'Error de conexión');
+        });
+}
+
+// Cargar tabla de vehículos cuando se muestra la sección
+document.addEventListener('DOMContentLoaded', function() {
+    const vehiclesNav = document.querySelector('.nav-link[data-section="vehicles"]');
+    if (vehiclesNav) {
+        vehiclesNav.addEventListener('click', function() {
+            loadVehiclesTable();
+        });
+    }
+});
 
 function renderRidesTable(rides) {
     const container = document.getElementById('ridesTableContainer');
