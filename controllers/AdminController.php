@@ -1181,6 +1181,158 @@ class AdminController {
             ]);
         }
     }
+
+    /**
+     * API: Obtener configuración de la aplicación (settings)
+     * GET /api/admin/settings
+     */
+    public function apiGetSettings() {
+        $this->requireAdminRole();
+        header('Content-Type: application/json');
+
+        try {
+            // Read configuration directly from PHP constants (no settings.json)
+            $settings = [];
+            // Admin email and support phone from constants.php
+            $settings['admin_email'] = defined('ADMIN_EMAIL') ? ADMIN_EMAIL : '';
+            $settings['support_phone'] = defined('SUPPORT_PHONE') ? SUPPORT_PHONE : '';
+
+            // SMTP values from config/email.php (these constants are loaded by the front controller)
+            $settings['smtp'] = [
+                'host' => defined('SMTP_HOST') ? SMTP_HOST : '',
+                'port' => defined('SMTP_PORT') ? SMTP_PORT : '',
+                'username' => defined('SMTP_USERNAME') ? SMTP_USERNAME : '',
+                // For security, do not expose the SMTP password unless you want to; expose empty by default
+                'password' => defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '',
+                'encryption' => defined('SMTP_ENCRYPTION') ? SMTP_ENCRYPTION : '',
+                'from_email' => defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : '',
+                'from_name' => defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : ''
+            ];
+
+            echo json_encode(['success' => true, 'settings' => $settings]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * API: Actualizar settings (por ahora guarda en config/settings.json)
+     * POST /api/admin/settings
+     */
+    public function apiUpdateSettings() {
+        $this->requireAdminRole();
+        header('Content-Type: application/json');
+
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+                return;
+            }
+
+            // Read incoming JSON (support application/json)
+            $input = [];
+            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+            if (strpos($contentType, 'application/json') !== false) {
+                $raw = file_get_contents('php://input');
+                $input = json_decode($raw, true) ?: [];
+            } else {
+                // Fallback to POST fields
+                $input = $_POST;
+            }
+            // We will update the PHP config files directly: constants.php and email.php
+            $constantsFile = CONFIG_PATH . '/constants.php';
+            $emailFile = CONFIG_PATH . '/email.php';
+
+            // Prepare values
+            $supportPhone = isset($input['support_phone']) ? $input['support_phone'] : null;
+            $adminEmail = isset($input['support_email']) ? $input['support_email'] : (isset($input['admin_email']) ? $input['admin_email'] : null);
+            $smtp = isset($input['smtp']) && is_array($input['smtp']) ? $input['smtp'] : [];
+
+            // Helper: update or add a define in a PHP file safely (creates backup)
+            $updateDefine = function($filePath, $name, $value) {
+                if (!file_exists($filePath)) {
+                    return ['success' => false, 'message' => "Archivo no encontrado: $filePath"];
+                }
+                if (!is_writable($filePath)) {
+                    return ['success' => false, 'message' => "Archivo no escribible: $filePath"];
+                }
+                $content = file_get_contents($filePath);
+                // Escape single quotes in value
+                $safeVal = str_replace("'","\\'", (string)$value);
+                $pattern = '/define\(\s*["\']' . preg_quote($name, '/') . '["\']\s*,\s*["\'][^"\']*["\']\s*\)\s*;/';
+                $replacement = "define('" . $name . "', '" . $safeVal . "');";
+
+                if (preg_match($pattern, $content)) {
+                    $newContent = preg_replace($pattern, $replacement, $content, 1);
+                } else {
+                    // Append before end of file
+                    $newContent = rtrim($content) . "\n" . $replacement . "\n";
+                }
+
+                // Backup original
+                $bak = $filePath . '.bak.' . time();
+                if (!copy($filePath, $bak)) {
+                    return ['success' => false, 'message' => "No se pudo crear backup: $bak"];
+                }
+
+                $written = file_put_contents($filePath, $newContent);
+                if ($written === false) {
+                    return ['success' => false, 'message' => 'No se pudo escribir el archivo: ' . $filePath];
+                }
+                return ['success' => true];
+            };
+
+            // Update constants.php: ADMIN_EMAIL and SUPPORT_PHONE
+            $results = [];
+            if ($adminEmail !== null) {
+                $r = $updateDefine($constantsFile, 'ADMIN_EMAIL', $adminEmail);
+                $results['ADMIN_EMAIL'] = $r;
+            }
+            if ($supportPhone !== null) {
+                $r = $updateDefine($constantsFile, 'SUPPORT_PHONE', $supportPhone);
+                $results['SUPPORT_PHONE'] = $r;
+            }
+
+            // Update email.php SMTP defines
+            $smtpFields = [
+                'host' => 'SMTP_HOST',
+                'port' => 'SMTP_PORT',
+                'username' => 'SMTP_USERNAME',
+                'password' => 'SMTP_PASSWORD',
+                'encryption' => 'SMTP_ENCRYPTION',
+                'from_email' => 'SMTP_FROM_EMAIL',
+                'from_name' => 'SMTP_FROM_NAME'
+            ];
+            foreach ($smtpFields as $key => $constName) {
+                if (isset($smtp[$key])) {
+                    $r = $updateDefine($emailFile, $constName, $smtp[$key]);
+                    $results[$constName] = $r;
+                }
+            }
+
+            // Evaluate results: if any update failed, return success=false with details
+            $failed = [];
+            foreach ($results as $k => $res) {
+                if (!is_array($res) || ($res['success'] ?? false) !== true) {
+                    $failed[$k] = $res;
+                }
+            }
+
+            if (!empty($failed)) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Algunas actualizaciones fallaron (permisos o error en archivos).',
+                    'results' => $results,
+                    'failed' => $failed
+                ]);
+                return;
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Configuración guardada en archivos PHP', 'results' => $results]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
     
     /**
      * API: Listar usuarios con filtros opcionales
@@ -1268,22 +1420,14 @@ class AdminController {
         try {
             $vehicles = $this->vehicleModel->getByDriver($driverId);
             $formatted = array_map(function($v) {
-                // The DB uses `seats_capacity` and `plate_number` column names.
-                // Fallback to other common names for compatibility.
-                $plate = $v['plate_number'] ?? $v['plate'] ?? $v['license_plate'] ?? '';
-                $make = $v['brand'] ?? $v['make'] ?? '';
-                $model = $v['model'] ?? '';
-
-                // Prefer seats_capacity column; fall back to capacity or seats if present.
-                $capacity = isset($v['seats_capacity']) ? (int)$v['seats_capacity'] : (int)($v['capacity'] ?? $v['seats'] ?? 0);
-
                 return [
                     'id' => $v['id'],
-                    'plate' => $plate,
-                    'make' => $make,
-                    'model' => $model,
-                    'capacity' => $capacity,
-                    'display' => trim($make . ' ' . $model . ' - ' . $plate)
+                    'plate_number' => $v['plate_number'] ?? $v['plate'] ?? '',
+                    'brand' => $v['brand'] ?? '',
+                    'model' => $v['model'] ?? '',
+                    'year' => $v['year'] ?? '',
+                    'seats_capacity' => isset($v['seats_capacity']) ? (int)$v['seats_capacity'] : (int)($v['capacity'] ?? 0),
+                    'is_active' => isset($v['is_active']) ? (bool)$v['is_active'] : true
                 ];
             }, $vehicles);
 
@@ -1296,99 +1440,219 @@ class AdminController {
     }
     
     /**
-     * API: Obtener usuario específico
-     */
-    public function apiUser($id) {
-        $this->requireAdminRole();
-        
-        try {
-            $user = $this->userModel->findById($id);
-            
-            if (!$user) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Usuario no encontrado'
-                ]);
-                return;
-            }
-            
-            // No devolver información sensible
-            unset($user['password_hash']);
-            unset($user['activation_token']);
-            
-            echo json_encode([
-                'success' => true,
-                'user' => $user
-            ]);
-            
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error al cargar usuario: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    /**
      * API: Generar reporte específico
      */
     public function apiReport($type) {
         $this->requireAdminRole();
-        
+
         try {
-            $report = null;
-            
-            switch($type) {
-                case 'users':
-                    $report = [
-                        'title' => 'Reporte de Usuarios',
-                        'description' => 'Estadísticas completas de usuarios registrados',
-                        'downloadUrl' => BASE_URL . '/admin/exports/users.pdf'
-                    ];
-                    break;
-                    
-                case 'rides':
-                    $report = [
-                        'title' => 'Reporte de Viajes',
-                        'description' => 'Análisis de viajes realizados y estadísticas',
-                        'downloadUrl' => BASE_URL . '/admin/exports/rides.pdf'
-                    ];
-                    break;
-                    
-                case 'revenue':
-                    $report = [
-                        'title' => 'Reporte Financiero',
-                        'description' => 'Ingresos y transacciones del sistema',
-                        'downloadUrl' => BASE_URL . '/admin/exports/revenue.pdf'
-                    ];
-                    break;
-                    
-                case 'activity':
-                    $report = [
-                        'title' => 'Reporte de Actividad',
-                        'description' => 'Log de actividades y uso del sistema',
-                        'downloadUrl' => BASE_URL . '/admin/exports/activity.pdf'
-                    ];
-                    break;
-                    
+            // Parámetros comunes
+            $from = isset($_GET['from']) ? sanitize($_GET['from']) : null;
+            $to = isset($_GET['to']) ? sanitize($_GET['to']) : null;
+            $group_by = isset($_GET['group_by']) ? sanitize($_GET['group_by']) : 'day'; // day|week|month
+            $format = isset($_GET['format']) ? strtolower(sanitize($_GET['format'])) : 'json'; // json|csv
+
+            // Validar fechas básicas
+            $today = date('Y-m-d');
+            if (empty($to)) $to = $today;
+            if (empty($from)) $from = date('Y-m-d', strtotime('-30 days', strtotime($to)));
+
+            // Limitar rango máximo a 1 año
+            $from_ts = strtotime($from);
+            $to_ts = strtotime($to);
+            if ($from_ts === false || $to_ts === false || $from_ts > $to_ts) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Rango de fechas inválido']);
+                return;
+            }
+            $diff_days = ($to_ts - $from_ts) / 86400;
+            if ($diff_days > 366) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'El rango máximo permitido es de 1 año']);
+                return;
+            }
+
+            // Conectar a la DB
+            require_once __DIR__ . '/../core/Database.php';
+            $db = Database::getInstance();
+
+            switch ($type) {
+                case 'rides-per-period':
+                    // Construir SQL según agrupamiento
+                    if ($group_by === 'month') {
+                        $period_select = "DATE_FORMAT(ride_date, '%Y-%m-01') AS period";
+                        $group_clause = "YEAR(ride_date), MONTH(ride_date)";
+                        $order_clause = "period ASC";
+                    } elseif ($group_by === 'week') {
+                        // week starting Monday
+                        $period_select = "CONCAT(YEAR(ride_date), '-W', LPAD(WEEK(ride_date, 1),2,'0')) AS period";
+                        $group_clause = "YEAR(ride_date), WEEK(ride_date,1)";
+                        $order_clause = "period ASC";
+                    } else {
+                        $period_select = "DATE(ride_date) AS period";
+                        $group_clause = "DATE(ride_date)";
+                        $order_clause = "period ASC";
+                    }
+
+                    $sql = "SELECT {$period_select}, 
+                                   COUNT(*) AS rides, 
+                                   SUM(total_seats - available_seats) AS seats_sold, 
+                                   SUM(total_seats) AS seats_total, 
+                                   SUM(cost_per_seat * (total_seats - available_seats)) AS revenue
+                              FROM rides
+                             WHERE ride_date BETWEEN ? AND ?
+                          GROUP BY {$group_clause}
+                          ORDER BY {$order_clause}";
+
+                    $stmt = $db->query($sql, [$from, $to]);
+                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    if ($format === 'csv') {
+                        // Stream CSV
+                        header('Content-Type: text/csv; charset=utf-8');
+                        header('Content-Disposition: attachment; filename="rides_per_period_' . date('Ymd_His') . '.csv"');
+                        echo "\xEF\xBB\xBF"; // BOM
+                        $out = fopen('php://output', 'w');
+                        fputcsv($out, ['period', 'rides', 'seats_sold', 'seats_total', 'revenue']);
+                        foreach ($rows as $r) {
+                            fputcsv($out, [$r['period'], $r['rides'] ?? 0, $r['seats_sold'] ?? 0, $r['seats_total'] ?? 0, $r['revenue'] ?? 0]);
+                        }
+                        fclose($out);
+                        return;
+                    }
+
+                    // Totals
+                    $totals = ['rides' => 0, 'seats_sold' => 0, 'seats_total' => 0, 'revenue' => 0];
+                    foreach ($rows as $r) {
+                        $totals['rides'] += (int)($r['rides'] ?? 0);
+                        $totals['seats_sold'] += (int)($r['seats_sold'] ?? 0);
+                        $totals['seats_total'] += (int)($r['seats_total'] ?? 0);
+                        $totals['revenue'] += (float)($r['revenue'] ?? 0);
+                    }
+
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'series' => $rows, 'totals' => $totals]);
+                    return;
+
+                case 'users-activity':
+                    // New users
+                    $sql_new = "SELECT DATE(created_at) AS period, COUNT(*) AS new_users 
+                                  FROM users 
+                                 WHERE created_at BETWEEN ? AND ? 
+                              GROUP BY DATE(created_at) 
+                              ORDER BY DATE(created_at) ASC";
+                    $stmt_new = $db->query($sql_new, [$from, $to]);
+                    $new_rows = $stmt_new->fetchAll(PDO::FETCH_ASSOC);
+
+                    // Active users (last_login within period)
+                    $sql_active = "SELECT DATE(last_login) AS period, COUNT(*) AS active_users 
+                                     FROM users 
+                                    WHERE last_login BETWEEN ? AND ? 
+                                 GROUP BY DATE(last_login) 
+                                 ORDER BY DATE(last_login) ASC";
+                    $stmt_active = $db->query($sql_active, [$from, $to]);
+                    $active_rows = $stmt_active->fetchAll(PDO::FETCH_ASSOC);
+
+                    // Cancellations (reservations.status = 'cancelled')
+                    $sql_cancel = "SELECT DATE(updated_at) AS period, COUNT(*) AS cancellations 
+                                     FROM reservations 
+                                    WHERE status = 'cancelled' AND updated_at BETWEEN ? AND ? 
+                                 GROUP BY DATE(updated_at) 
+                                 ORDER BY DATE(updated_at) ASC";
+                    $stmt_cancel = $db->query($sql_cancel, [$from, $to]);
+                    $cancel_rows = $stmt_cancel->fetchAll(PDO::FETCH_ASSOC);
+
+                    if ($format === 'csv') {
+                        header('Content-Type: text/csv; charset=utf-8');
+                        header('Content-Disposition: attachment; filename="users_activity_' . date('Ymd_His') . '.csv"');
+                        echo "\xEF\xBB\xBF";
+                        $out = fopen('php://output', 'w');
+                        fputcsv($out, ['period', 'new_users', 'active_users', 'cancellations']);
+
+                        // Merge rows by period (using from-to loop)
+                        $start = new DateTime($from);
+                        $end = new DateTime($to);
+                        $period = new DatePeriod($start, new DateInterval('P1D'), $end->modify('+1 day'));
+                        foreach ($period as $dt) {
+                            $p = $dt->format('Y-m-d');
+                            $n = 0; $a = 0; $c = 0;
+                            foreach ($new_rows as $nr) if ($nr['period'] === $p) $n = $nr['new_users'];
+                            foreach ($active_rows as $ar) if ($ar['period'] === $p) $a = $ar['active_users'];
+                            foreach ($cancel_rows as $cr) if ($cr['period'] === $p) $c = $cr['cancellations'];
+                            fputcsv($out, [$p, $n, $a, $c]);
+                        }
+                        fclose($out);
+                        return;
+                    }
+
+                    // Merge series into a single array by period (days)
+                    $series = [];
+                    $start = new DateTime($from);
+                    $end = new DateTime($to);
+                    $period = new DatePeriod($start, new DateInterval('P1D'), $end->modify('+1 day'));
+                    foreach ($period as $dt) {
+                        $p = $dt->format('Y-m-d');
+                        $n = 0; $a = 0; $c = 0;
+                        foreach ($new_rows as $nr) if ($nr['period'] === $p) $n = (int)$nr['new_users'];
+                        foreach ($active_rows as $ar) if ($ar['period'] === $p) $a = (int)$ar['active_users'];
+                        foreach ($cancel_rows as $cr) if ($cr['period'] === $p) $c = (int)$cr['cancellations'];
+                        $series[] = ['period' => $p, 'new_users' => $n, 'active_users' => $a, 'cancellations' => $c];
+                    }
+
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'series' => $series]);
+                    return;
+
+                case 'revenue-per-period':
+                    // Similar to rides-per-period but return only revenue
+                    if ($group_by === 'month') {
+                        $period_select = "DATE_FORMAT(ride_date, '%Y-%m-01') AS period";
+                        $group_clause = "YEAR(ride_date), MONTH(ride_date)";
+                        $order_clause = "period ASC";
+                    } elseif ($group_by === 'week') {
+                        $period_select = "CONCAT(YEAR(ride_date), '-W', LPAD(WEEK(ride_date, 1),2,'0')) AS period";
+                        $group_clause = "YEAR(ride_date), WEEK(ride_date,1)";
+                        $order_clause = "period ASC";
+                    } else {
+                        $period_select = "DATE(ride_date) AS period";
+                        $group_clause = "DATE(ride_date)";
+                        $order_clause = "period ASC";
+                    }
+
+                    $sql_rev = "SELECT {$period_select}, SUM(cost_per_seat * (total_seats - available_seats)) AS revenue
+                                  FROM rides
+                                 WHERE ride_date BETWEEN ? AND ?
+                              GROUP BY {$group_clause}
+                              ORDER BY {$order_clause}";
+                    $stmt_rev = $db->query($sql_rev, [$from, $to]);
+                    $rev_rows = $stmt_rev->fetchAll(PDO::FETCH_ASSOC);
+
+                    if ($format === 'csv') {
+                        header('Content-Type: text/csv; charset=utf-8');
+                        header('Content-Disposition: attachment; filename="revenue_per_period_' . date('Ymd_His') . '.csv"');
+                        echo "\xEF\xBB\xBF";
+                        $out = fopen('php://output', 'w');
+                        fputcsv($out, ['period', 'revenue']);
+                        foreach ($rev_rows as $r) {
+                            fputcsv($out, [$r['period'], $r['revenue'] ?? 0]);
+                        }
+                        fclose($out);
+                        return;
+                    }
+
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'series' => $rev_rows]);
+                    return;
+
                 default:
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Tipo de reporte no válido'
-                    ]);
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Tipo de reporte no válido']);
                     return;
             }
-            
-            echo json_encode([
-                'success' => true,
-                'report' => $report
-            ]);
-            
+
         } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error al generar reporte: ' . $e->getMessage()
-            ]);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error al generar reporte: ' . $e->getMessage()]);
         }
     }
       
