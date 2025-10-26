@@ -21,8 +21,9 @@ define('BASE_URL', 'http://localhost:8080/Rubber/public');
 define('ASSETS_URL', BASE_URL . '/assets');
 
 // Email del administrador
-define('ADMIN_EMAIL', 'rquesadaqq@outlook.com');
-
+define('ADMIN_EMAIL', 'ithakidev@gmail.com');
+// Teléfono de soporte (editable desde el dashboard)
+define('SUPPORT_PHONE', '6043-7458');
 // Rutas del sistema
 define('ROOT_PATH', dirname(__DIR__));
 define('CONFIG_PATH', ROOT_PATH . '/config');
