@@ -52,7 +52,8 @@ class AdminController {
         $recent_users = array_slice($this->userModel->getAll(), 0, 5);
         $recent_reservations = array_slice($this->reservationModel->getAll(), 0, 10);
         
-        require_once __DIR__ . '/../views/admin/dashboard.php';
+        // Cargar la vista (que internamente usa el layout base)
+        include __DIR__ . '/../views/admin/dashboard.php';
     }
     
     // ==========================================
