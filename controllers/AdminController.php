@@ -1229,16 +1229,9 @@ class AdminController {
                 return;
             }
 
-            // Read incoming JSON (support application/json)
-            $input = [];
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (strpos($contentType, 'application/json') !== false) {
-                $raw = file_get_contents('php://input');
-                $input = json_decode($raw, true) ?: [];
-            } else {
-                // Fallback to POST fields
-                $input = $_POST;
-            }
+            // Read incoming POST fields (do NOT accept raw JSON here)
+            // Expect regular form-encoded POST or multipart/form-data (FormData)
+            $input = $_POST;
             // We will update the PHP config files directly: constants.php and email.php
             $constantsFile = CONFIG_PATH . '/constants.php';
             $emailFile = CONFIG_PATH . '/email.php';

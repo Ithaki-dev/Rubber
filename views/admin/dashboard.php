@@ -2179,26 +2179,23 @@ async function loadSettings() {
 async function saveSettings() {
     const btn = document.getElementById('settingsSaveBtn');
     btn.disabled = true;
-    const payload = {
-        support_phone: document.getElementById('supportPhone').value || '',
-        support_email: document.getElementById('supportEmail').value || '',
-        smtp: {
-            host: document.getElementById('smtpHost').value || '',
-            port: document.getElementById('smtpPort').value || '',
-            encryption: document.getElementById('smtpEncryption').value || '',
-            username: document.getElementById('smtpUser').value || '',
-            password: document.getElementById('smtpPass').value || '',
-            from_email: document.getElementById('smtpFromEmail').value || '',
-            from_name: document.getElementById('smtpFromName').value || ''
-        }
-    };
+    // Build FormData so PHP receives fields in $_POST (including smtp[...] nested fields)
+    const form = new FormData();
+    form.append('support_phone', document.getElementById('supportPhone').value || '');
+    form.append('support_email', document.getElementById('supportEmail').value || '');
+    form.append('smtp[host]', document.getElementById('smtpHost').value || '');
+    form.append('smtp[port]', document.getElementById('smtpPort').value || '');
+    form.append('smtp[encryption]', document.getElementById('smtpEncryption').value || '');
+    form.append('smtp[username]', document.getElementById('smtpUser').value || '');
+    form.append('smtp[password]', document.getElementById('smtpPass').value || '');
+    form.append('smtp[from_email]', document.getElementById('smtpFromEmail').value || '');
+    form.append('smtp[from_name]', document.getElementById('smtpFromName').value || '');
 
     showSettingsInlineAlert('Guardando configuración...', 'info');
     try {
         const resp = await fetch(`${BASE_URL}/api/admin/settings`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: form // let browser set Content-Type for form data
         });
         const json = await resp.json();
         if (!json.success) {
