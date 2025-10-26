@@ -429,7 +429,90 @@ ob_start();
             <!-- Sección Reportes -->
             <div id="reports-section" class="content-section d-none">
                 <h2><i class="bi bi-graph-up me-2"></i>Reportes</h2>
-                <p class="text-muted">Funcionalidad de reportes en desarrollo...</p>
+                <p class="text-muted">Visualiza métricas de viajes, ingresos y actividad de usuarios. Selecciona el rango y agrupa por día/semana/mes. Puedes exportar los datos en CSV.</p>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Desde</label>
+                                <input type="date" id="reportFrom" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Hasta</label>
+                                <input type="date" id="reportTo" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Agrupar por</label>
+                                <select id="reportGroupBy" class="form-select">
+                                    <option value="day">Día</option>
+                                    <option value="week">Semana</option>
+                                    <option value="month">Mes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <button class="btn btn-primary" id="reportApplyBtn">Aplicar</button>
+                                <button class="btn btn-outline-secondary" id="reportExportBtn">Exportar CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI cards -->
+                <div class="row mb-3" id="reports-kpis">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Total Viajes</h6>
+                                <h3 id="kpiTotalRides">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Ingresos Totales</h6>
+                                <h3 id="kpiTotalRevenue">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Ocupación Promedio (%)</h6>
+                                <h3 id="kpiOccupancy">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 mb-4">
+                        <div class="card">
+                            <div class="card-header">Viajes & Ingresos (serie de tiempo)</div>
+                            <div class="card-body">
+                                <canvas id="ridesChart" height="140"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-4">
+                        <div class="card mb-3">
+                            <div class="card-header">Usuarios (nuevos / cancelaciones)</div>
+                            <div class="card-body">
+                                <canvas id="usersBarChart" height="160"></canvas>
+                                <hr>
+                                <canvas id="usersDonutChart" height="140"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">Detalle de períodos</div>
+                    <div class="card-body">
+                        <div id="reportsTableContainer">Cargando datos...</div>
+                    </div>
+                </div>
             </div>
             
             <!-- Sección Configuración -->
@@ -634,6 +717,8 @@ ob_start();
                 </div>
             </div>
 
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const BASE_URL = '<?= BASE_URL ?>';
 
@@ -667,6 +752,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (targetSection === 'rides') {
                 // Cargar viajes al mostrar la sección
                 loadRidesData();
+            } else if (targetSection === 'reports') {
+                // Inicializar reportes
+                initReportsSection();
             }
         });
     });
@@ -1788,6 +1876,198 @@ function showAlert(type, message) {
             alertDiv.remove();
         }
     }, 5000);
+}
+
+// ==================================================
+// REPORTS: functions to load data and render charts
+// ==================================================
+let ridesChart = null;
+let usersBarChart = null;
+let usersDonutChart = null;
+
+function initReportsSection() {
+    // Set default dates: from = 30 days ago, to = today
+    const fromInput = document.getElementById('reportFrom');
+    const toInput = document.getElementById('reportTo');
+    const today = new Date();
+    const toStr = today.toISOString().slice(0,10);
+    const fromDate = new Date();
+    fromDate.setDate(today.getDate() - 30);
+    const fromStr = fromDate.toISOString().slice(0,10);
+
+    if (fromInput && !fromInput.value) fromInput.value = fromStr;
+    if (toInput && !toInput.value) toInput.value = toStr;
+
+    document.getElementById('reportApplyBtn').addEventListener('click', loadReportsData);
+    document.getElementById('reportExportBtn').addEventListener('click', function() {
+        const from = encodeURIComponent(document.getElementById('reportFrom').value);
+        const to = encodeURIComponent(document.getElementById('reportTo').value);
+        const group = encodeURIComponent(document.getElementById('reportGroupBy').value);
+        // Open CSV export in new tab
+        window.open(`${BASE_URL}/api/admin/reports/rides-per-period?format=csv&from=${from}&to=${to}&group_by=${group}`, '_blank');
+    });
+
+    // Initial load
+    loadReportsData();
+}
+
+async function loadReportsData() {
+    const from = document.getElementById('reportFrom').value;
+    const to = document.getElementById('reportTo').value;
+    const group_by = document.getElementById('reportGroupBy').value;
+
+    // Basic param validation
+    if (!from || !to) {
+        showAlert('error', 'Seleccione fechas válidas');
+        return;
+    }
+
+    // Fetch rides per period
+    try {
+        const ridesResp = await fetch(`${BASE_URL}/api/admin/reports/rides-per-period?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&group_by=${encodeURIComponent(group_by)}`);
+        const ridesJson = await ridesResp.json();
+        if (!ridesJson.success) {
+            showAlert('error', ridesJson.message || 'Error al cargar datos de viajes');
+            return;
+        }
+
+        // Update KPIs
+        const totals = ridesJson.totals || { rides:0, revenue:0, seats_sold:0, seats_total:0 };
+        document.getElementById('kpiTotalRides').textContent = totals.rides ?? 0;
+        document.getElementById('kpiTotalRevenue').textContent = formatCurrency(totals.revenue ?? 0);
+        const occupancy = totals.seats_total ? Math.round((totals.seats_sold / totals.seats_total) * 100) : 0;
+        document.getElementById('kpiOccupancy').textContent = occupancy + '%';
+
+        // Render rides chart
+        renderRidesChart(ridesJson.series || []);
+
+        // Fetch users activity
+        const usersResp = await fetch(`${BASE_URL}/api/admin/reports/users-activity?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const usersJson = await usersResp.json();
+        if (!usersJson.success) {
+            // still continue if users fail
+            console.warn('users activity failed', usersJson.message);
+        } else {
+            renderUsersCharts(usersJson.series || []);
+        }
+
+        // Fill table with series data (rides)
+        const tableContainer = document.getElementById('reportsTableContainer');
+        if (Array.isArray(ridesJson.series) && ridesJson.series.length) {
+            let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Periodo</th><th>Viajes</th><th>Asientos Vendidos</th><th>Asientos Totales</th><th>Revenue</th></tr></thead><tbody>';
+            ridesJson.series.forEach(r => {
+                html += `<tr><td>${r.period}</td><td>${r.rides}</td><td>${r.seats_sold}</td><td>${r.seats_total}</td><td>${formatCurrency(r.revenue)}</td></tr>`;
+            });
+            html += '</tbody></table></div>';
+            tableContainer.innerHTML = html;
+        } else {
+            tableContainer.innerHTML = '<p class="text-muted">No hay datos para el período seleccionado.</p>';
+        }
+
+    } catch (err) {
+        console.error('Error loading reports', err);
+        showAlert('error', 'Error de conexión al cargar reportes');
+    }
+}
+
+function renderRidesChart(series) {
+    const labels = series.map(s => s.period);
+    const ridesData = series.map(s => Number(s.rides || 0));
+    const revenueData = series.map(s => Number(s.revenue || 0));
+
+    const ctx = document.getElementById('ridesChart').getContext('2d');
+    if (ridesChart) {
+        ridesChart.data.labels = labels;
+        ridesChart.data.datasets[0].data = ridesData;
+        ridesChart.data.datasets[1].data = revenueData;
+        ridesChart.update();
+        return;
+    }
+
+    ridesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Viajes',
+                    data: ridesData,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13,110,253,0.1)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Revenue',
+                    data: revenueData,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25,135,84,0.1)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            stacked: false,
+            scales: {
+                y: { type: 'linear', display: true, position: 'left' },
+                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+}
+
+function renderUsersCharts(series) {
+    const labels = series.map(s => s.period);
+    const newUsers = series.map(s => Number(s.new_users || 0));
+    const cancellations = series.map(s => Number(s.cancellations || 0));
+    const totalNew = newUsers.reduce((a,b)=>a+b,0);
+    const totalCancel = cancellations.reduce((a,b)=>a+b,0);
+
+    // Bar chart
+    const barCtx = document.getElementById('usersBarChart').getContext('2d');
+    if (usersBarChart) {
+        usersBarChart.data.labels = labels;
+        usersBarChart.data.datasets[0].data = newUsers;
+        usersBarChart.data.datasets[1].data = cancellations;
+        usersBarChart.update();
+    } else {
+        usersBarChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Nuevos', backgroundColor: '#0d6efd', data: newUsers },
+                    { label: 'Cancelaciones', backgroundColor: '#dc3545', data: cancellations }
+                ]
+            },
+            options: { responsive: true, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+        });
+    }
+
+    // Donut chart (totals)
+    const donutCtx = document.getElementById('usersDonutChart').getContext('2d');
+    if (usersDonutChart) {
+        usersDonutChart.data.datasets[0].data = [totalNew, totalCancel];
+        usersDonutChart.update();
+    } else {
+        usersDonutChart = new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Nuevos', 'Cancelaciones'],
+                datasets: [{ data: [totalNew, totalCancel], backgroundColor: ['#0d6efd', '#dc3545'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+}
+
+function formatCurrency(v) {
+    try {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(v || 0));
+    } catch (e) {
+        return '$' + (Number(v || 0).toFixed(2));
+    }
 }
 </script>
 
