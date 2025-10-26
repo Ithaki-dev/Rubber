@@ -1437,6 +1437,8 @@ class AdminController {
      */
     public function apiReport($type) {
         $this->requireAdminRole();
+        // Buffer output so that accidental warnings/notices don't break JSON responses
+        if (!ob_get_level()) ob_start();
 
         try {
             // Parámetros comunes
@@ -1454,12 +1456,14 @@ class AdminController {
             $from_ts = strtotime($from);
             $to_ts = strtotime($to);
             if ($from_ts === false || $to_ts === false || $from_ts > $to_ts) {
+                if (ob_get_length()) ob_clean();
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Rango de fechas inválido']);
                 return;
             }
             $diff_days = ($to_ts - $from_ts) / 86400;
             if ($diff_days > 366) {
+                if (ob_get_length()) ob_clean();
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'El rango máximo permitido es de 1 año']);
                 return;
@@ -1502,6 +1506,7 @@ class AdminController {
 
                     if ($format === 'csv') {
                         // Stream CSV
+                        if (ob_get_length()) ob_clean();
                         header('Content-Type: text/csv; charset=utf-8');
                         header('Content-Disposition: attachment; filename="rides_per_period_' . date('Ymd_His') . '.csv"');
                         echo "\xEF\xBB\xBF"; // BOM
@@ -1523,6 +1528,7 @@ class AdminController {
                         $totals['revenue'] += (float)($r['revenue'] ?? 0);
                     }
 
+                    if (ob_get_length()) ob_clean();
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'series' => $rows, 'totals' => $totals]);
                     return;
@@ -1556,6 +1562,7 @@ class AdminController {
                     $cancel_rows = $stmt_cancel->fetchAll(PDO::FETCH_ASSOC);
 
                     if ($format === 'csv') {
+                        if (ob_get_length()) ob_clean();
                         header('Content-Type: text/csv; charset=utf-8');
                         header('Content-Disposition: attachment; filename="users_activity_' . date('Ymd_His') . '.csv"');
                         echo "\xEF\xBB\xBF";
@@ -1592,6 +1599,7 @@ class AdminController {
                         $series[] = ['period' => $p, 'new_users' => $n, 'active_users' => $a, 'cancellations' => $c];
                     }
 
+                    if (ob_get_length()) ob_clean();
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'series' => $series]);
                     return;
@@ -1621,6 +1629,7 @@ class AdminController {
                     $rev_rows = $stmt_rev->fetchAll(PDO::FETCH_ASSOC);
 
                     if ($format === 'csv') {
+                        if (ob_get_length()) ob_clean();
                         header('Content-Type: text/csv; charset=utf-8');
                         header('Content-Disposition: attachment; filename="revenue_per_period_' . date('Ymd_His') . '.csv"');
                         echo "\xEF\xBB\xBF";
@@ -1633,17 +1642,20 @@ class AdminController {
                         return;
                     }
 
+                    if (ob_get_length()) ob_clean();
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'series' => $rev_rows]);
                     return;
 
                 default:
+                    if (ob_get_length()) ob_clean();
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'message' => 'Tipo de reporte no válido']);
                     return;
             }
 
         } catch (Exception $e) {
+            if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Error al generar reporte: ' . $e->getMessage()]);
         }
