@@ -716,37 +716,51 @@ class AdminController {
      * Crear viaje (admin) - acepta POST
      */
     public function createRide() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            redirect('/admin/rides');
-            return;
-        }
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                redirect('/admin/rides');
+                return;
+            }
 
-        $data = [
-            'driver_id' => sanitize($_POST['driver_id'] ?? ''),
-            'vehicle_id' => sanitize($_POST['vehicle_id'] ?? ''),
-            'ride_name' => sanitize($_POST['ride_name'] ?? ''),
-            'departure_location' => sanitize($_POST['departure_location'] ?? ''),
-            'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
-            'ride_date' => sanitize($_POST['ride_date'] ?? ''),
-            'ride_time' => sanitize($_POST['ride_time'] ?? ''),
-            'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
-            'total_seats' => sanitize($_POST['total_seats'] ?? '')
-        ];
+            // Log input for debugging
+            error_log('createRide POST data: ' . json_encode($_POST));
 
-        $result = $this->rideModel->create($data);
+            $data = [
+                'driver_id' => sanitize($_POST['driver_id'] ?? ''),
+                'vehicle_id' => sanitize($_POST['vehicle_id'] ?? ''),
+                'ride_name' => sanitize($_POST['ride_name'] ?? ''),
+                'departure_location' => sanitize($_POST['departure_location'] ?? ''),
+                'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
+                'ride_date' => sanitize($_POST['ride_date'] ?? ''),
+                'ride_time' => sanitize($_POST['ride_time'] ?? ''),
+                'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
+                'total_seats' => sanitize($_POST['total_seats'] ?? '')
+            ];
 
-        if ($this->isAjaxRequest()) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($result);
-            exit;
-        }
+            $result = $this->rideModel->create($data);
 
-        if ($result['success']) {
-            Session::setFlash('success', $result['message']);
-            redirect('/admin/rides');
-        } else {
-            Session::setFlash('error', $result['message']);
-            Session::setFlash('old_input', $data);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($result);
+                exit;
+            }
+
+            if ($result['success']) {
+                Session::setFlash('success', $result['message']);
+                redirect('/admin/rides');
+            } else {
+                Session::setFlash('error', $result['message']);
+                Session::setFlash('old_input', $data);
+                redirect('/admin/rides');
+            }
+        } catch (Exception $e) {
+            error_log('Exception in createRide: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Error interno: ' . $e->getMessage()]);
+                exit;
+            }
+            Session::setFlash('error', 'Error interno al crear viaje');
             redirect('/admin/rides');
         }
     }
@@ -755,34 +769,47 @@ class AdminController {
      * Actualizar viaje (admin)
      */
     public function updateRide($id) {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            redirect('/admin/rides');
-            return;
-        }
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                redirect('/admin/rides');
+                return;
+            }
 
-        $data = [
-            'ride_name' => sanitize($_POST['ride_name'] ?? ''),
-            'departure_location' => sanitize($_POST['departure_location'] ?? ''),
-            'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
-            'ride_date' => sanitize($_POST['ride_date'] ?? ''),
-            'ride_time' => sanitize($_POST['ride_time'] ?? ''),
-            'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
-            'total_seats' => sanitize($_POST['total_seats'] ?? '')
-        ];
+            error_log('updateRide POST data: id=' . $id . ' data=' . json_encode($_POST));
 
-        $result = $this->rideModel->update($id, $data);
+            $data = [
+                'ride_name' => sanitize($_POST['ride_name'] ?? ''),
+                'departure_location' => sanitize($_POST['departure_location'] ?? ''),
+                'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
+                'ride_date' => sanitize($_POST['ride_date'] ?? ''),
+                'ride_time' => sanitize($_POST['ride_time'] ?? ''),
+                'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
+                'total_seats' => sanitize($_POST['total_seats'] ?? '')
+            ];
 
-        if ($this->isAjaxRequest()) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($result);
-            exit;
-        }
+            $result = $this->rideModel->update($id, $data);
 
-        if ($result['success']) {
-            Session::setFlash('success', $result['message']);
-            redirect('/admin/rides');
-        } else {
-            Session::setFlash('error', $result['message']);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($result);
+                exit;
+            }
+
+            if ($result['success']) {
+                Session::setFlash('success', $result['message']);
+                redirect('/admin/rides');
+            } else {
+                Session::setFlash('error', $result['message']);
+                redirect('/admin/rides');
+            }
+        } catch (Exception $e) {
+            error_log('Exception in updateRide: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Error interno: ' . $e->getMessage()]);
+                exit;
+            }
+            Session::setFlash('error', 'Error interno al actualizar viaje');
             redirect('/admin/rides');
         }
     }
@@ -1051,13 +1078,22 @@ class AdminController {
         try {
             $vehicles = $this->vehicleModel->getByDriver($driverId);
             $formatted = array_map(function($v) {
+                // The DB uses `seats_capacity` and `plate_number` column names.
+                // Fallback to other common names for compatibility.
+                $plate = $v['plate_number'] ?? $v['plate'] ?? $v['license_plate'] ?? '';
+                $make = $v['brand'] ?? $v['make'] ?? '';
+                $model = $v['model'] ?? '';
+
+                // Prefer seats_capacity column; fall back to capacity or seats if present.
+                $capacity = isset($v['seats_capacity']) ? (int)$v['seats_capacity'] : (int)($v['capacity'] ?? $v['seats'] ?? 0);
+
                 return [
                     'id' => $v['id'],
-                    'plate' => $v['plate'] ?? $v['license_plate'] ?? '',
-                    'make' => $v['make'] ?? '',
-                    'model' => $v['model'] ?? '',
-                    'capacity' => isset($v['capacity']) ? (int)$v['capacity'] : (int)($v['seats'] ?? 0),
-                    'display' => trim(($v['make'] ?? '') . ' ' . ($v['model'] ?? '') . ' - ' . ($v['plate'] ?? ''))
+                    'plate' => $plate,
+                    'make' => $make,
+                    'model' => $model,
+                    'capacity' => $capacity,
+                    'display' => trim($make . ' ' . $model . ' - ' . $plate)
                 ];
             }, $vehicles);
 
