@@ -63,7 +63,7 @@ class AdminController {
     /**
      * Listar usuarios
      */
-    public function users() {
+    public function listUsers() {
         $filter_type = sanitize($_GET['type'] ?? '');
         $filter_status = sanitize($_GET['status'] ?? '');
         $search = sanitize($_GET['search'] ?? '');
@@ -79,9 +79,9 @@ class AdminController {
     }
     
     /**
-     * Ver detalles de usuario
+     * Buscar y mostrar detalles de usuario específico
      */
-    public function showUser($id) {
+    public function searchUserById($id) {
         $user = $this->userModel->findById($id);
         
         if (!$user) {
@@ -106,49 +106,143 @@ class AdminController {
     }
     
     /**
-     * Mostrar formulario para crear usuario
+     * Crear nuevo usuario (híbrido: HTML + AJAX)
      */
     public function createUser() {
-        require_once __DIR__ . '/../views/admin/users/create.php';
-    }
-    
-    /**
-     * Guardar nuevo usuario
-     */
-    public function storeUser() {
+        // Log para debug
+        error_log("=== createUser START ===");
+        error_log("Method: " . $_SERVER['REQUEST_METHOD']);
+        error_log("Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+        error_log("Is AJAX: " . ($this->isAjaxRequest() ? 'true' : 'false'));
+        error_log("POST data: " . json_encode($_POST));
+        error_log("FILES data: " . json_encode(array_keys($_FILES)));
+        
+        // Limpiar cualquier output buffer
+        if (ob_get_level()) {
+            ob_clean();
+        }
+        
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            // Si es una petición AJAX, devolver JSON
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Método no permitido'
+                ]);
+                return;
+            }
             redirect('/admin/users');
             return;
         }
         
+        // Detectar si los datos vienen del dashboard (nombres diferentes)
+        $isFromDashboard = isset($_POST['userType']) || isset($_POST['firstName']);
+        
+        // Preparar datos básicos
         $data = [
-            'user_type' => sanitize($_POST['user_type'] ?? ''),
-            'first_name' => sanitize($_POST['first_name'] ?? ''),
-            'last_name' => sanitize($_POST['last_name'] ?? ''),
-            'cedula' => sanitize($_POST['cedula'] ?? ''),
-            'birth_date' => sanitize($_POST['birth_date'] ?? ''),
-            'email' => sanitize($_POST['email'] ?? ''),
-            'phone' => sanitize($_POST['phone'] ?? ''),
-            'password' => $_POST['password'] ?? ''
+            'user_type' => sanitize($_POST[$isFromDashboard ? 'userType' : 'user_type'] ?? ''),
+            'first_name' => sanitize($_POST[$isFromDashboard ? 'firstName' : 'first_name'] ?? ''),
+            'last_name' => sanitize($_POST[$isFromDashboard ? 'lastName' : 'last_name'] ?? ''),
+            'cedula' => sanitize($_POST[$isFromDashboard ? 'userCedula' : 'cedula'] ?? ''),
+            'email' => sanitize($_POST[$isFromDashboard ? 'userEmail' : 'email'] ?? ''),
+            'phone' => sanitize($_POST[$isFromDashboard ? 'userPhone' : 'phone'] ?? ''),
+            'password' => $_POST[$isFromDashboard ? 'userPassword' : 'password'] ?? ''
         ];
         
+        // Manejar fecha de nacimiento (puede ser NULL)
+        $birthDate = sanitize($_POST[$isFromDashboard ? 'birthDate' : 'birth_date'] ?? '');
+        if (!empty($birthDate)) {
+            $data['birth_date'] = $birthDate;
+        }
+        
+        // Si viene del dashboard, usar el status seleccionado
+        if ($isFromDashboard && isset($_POST['userStatus'])) {
+            $selectedStatus = sanitize($_POST['userStatus']);
+        } else {
+            $selectedStatus = 'active'; // Default para admin
+        }
+        
         // Manejar foto
-        if (!empty($_FILES['photo']['name'])) {
-            $upload_result = uploadFile($_FILES['photo'], 'users');
-            if ($upload_result['success']) {
-                $data['photo_path'] = $upload_result['path'];
+        $photoField = $isFromDashboard ? 'userPhoto' : 'photo';
+        if (!empty($_FILES[$photoField]['name'])) {
+            error_log("Photo upload attempted but uploadFile function not implemented yet");
+            // TODO: Implement uploadFile function
+            // $upload_result = uploadFile($_FILES[$photoField], 'users');
+            // if ($upload_result['success']) {
+            //     $data['photo_path'] = $upload_result['path'];
+            // }
+        }
+        
+        // Validaciones
+        if (empty($data['first_name']) || empty($data['last_name']) || empty($data['email'])) {
+            $message = 'Los campos nombre, apellido y email son obligatorios';
+            if ($this->isAjaxRequest()) {
+                error_log("Validation error: " . $message);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                exit;
             }
+            Session::setFlash('error', $message);
+            Session::setFlash('old_input', $data);
+            redirect('/admin/users/create');
+            return;
+        }
+        
+        if (empty($data['password']) || strlen($data['password']) < 6) {
+            $message = 'La contraseña debe tener al menos 6 caracteres';
+            if ($this->isAjaxRequest()) {
+                error_log("Password validation error: " . $message);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                exit;
+            }
+            Session::setFlash('error', $message);
+            Session::setFlash('old_input', $data);
+            redirect('/admin/users/create');
+            return;
         }
         
         $result = $this->userModel->create($data);
         
         if ($result['success']) {
-            // Admin puede activar directamente
-            $this->userModel->changeStatus($result['user_id'], 'active');
+            // Admin puede cambiar el estado directamente
+            $this->userModel->changeStatus($result['user_id'], $selectedStatus);
+            
+            if ($this->isAjaxRequest()) {
+                error_log("Sending success JSON response");
+                header('Content-Type: application/json; charset=utf-8');
+                $response = [
+                    'success' => true,
+                    'message' => 'Usuario creado exitosamente',
+                    'user_id' => $result['user_id']
+                ];
+                error_log("Response: " . json_encode($response));
+                echo json_encode($response);
+                exit;
+            }
             
             Session::setFlash('success', 'Usuario creado exitosamente');
             redirect('/admin/users');
         } else {
+            if ($this->isAjaxRequest()) {
+                error_log("Sending error JSON response: " . $result['message']);
+                header('Content-Type: application/json; charset=utf-8');
+                $response = [
+                    'success' => false,
+                    'message' => $result['message']
+                ];
+                error_log("Error response: " . json_encode($response));
+                echo json_encode($response);
+                exit;
+            }
+            
             Session::setFlash('error', $result['message']);
             Session::setFlash('old_input', $data);
             redirect('/admin/users/create');
@@ -175,35 +269,80 @@ class AdminController {
      */
     public function updateUser($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Método no permitido'
+                ]);
+                return;
+            }
             redirect('/admin/users');
             return;
         }
         
         $user = $this->userModel->findById($id);
         if (!$user) {
-            Session::setFlash('error', 'Usuario no encontrado');
+            $message = 'Usuario no encontrado';
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                return;
+            }
+            Session::setFlash('error', $message);
             redirect('/admin/users');
             return;
         }
         
+        // Detectar si los datos vienen del dashboard (nombres diferentes)
+        $isFromDashboard = isset($_POST['userType']) || isset($_POST['firstName']);
+        
+        // Preparar datos básicos
         $data = [
-            'first_name' => sanitize($_POST['first_name'] ?? ''),
-            'last_name' => sanitize($_POST['last_name'] ?? ''),
-            'cedula' => sanitize($_POST['cedula'] ?? ''),
-            'birth_date' => sanitize($_POST['birth_date'] ?? ''),
-            'email' => sanitize($_POST['email'] ?? ''),
-            'phone' => sanitize($_POST['phone'] ?? ''),
-            'status' => sanitize($_POST['status'] ?? '')
+            'user_type' => sanitize($_POST[$isFromDashboard ? 'userType' : 'user_type'] ?? ''),
+            'first_name' => sanitize($_POST[$isFromDashboard ? 'firstName' : 'first_name'] ?? ''),
+            'last_name' => sanitize($_POST[$isFromDashboard ? 'lastName' : 'last_name'] ?? ''),
+            'cedula' => sanitize($_POST[$isFromDashboard ? 'userCedula' : 'cedula'] ?? ''),
+            'email' => sanitize($_POST[$isFromDashboard ? 'userEmail' : 'email'] ?? ''),
+            'phone' => sanitize($_POST[$isFromDashboard ? 'userPhone' : 'phone'] ?? ''),
+            'status' => sanitize($_POST[$isFromDashboard ? 'userStatus' : 'status'] ?? '')
         ];
         
+        // Manejar fecha de nacimiento (puede ser NULL)
+        $birthDate = sanitize($_POST[$isFromDashboard ? 'birthDate' : 'birth_date'] ?? '');
+        if (!empty($birthDate)) {
+            $data['birth_date'] = $birthDate;
+        } else {
+            $data['birth_date'] = null;
+        }
+        
         // Nueva contraseña (opcional)
-        if (!empty($_POST['password'])) {
-            $data['password'] = $_POST['password'];
+        $passwordField = $isFromDashboard ? 'userPassword' : 'password';
+        if (!empty($_POST[$passwordField])) {
+            if (strlen($_POST[$passwordField]) < 6) {
+                $message = 'La contraseña debe tener al menos 6 caracteres';
+                if ($this->isAjaxRequest()) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => $message
+                    ]);
+                    return;
+                }
+                Session::setFlash('error', $message);
+                redirect('/admin/users/edit/' . $id);
+                return;
+            }
+            $data['password'] = $_POST[$passwordField];
         }
         
         // Nueva foto (opcional)
-        if (!empty($_FILES['photo']['name'])) {
-            $upload_result = uploadFile($_FILES['photo'], 'users');
+        $photoField = $isFromDashboard ? 'userPhoto' : 'photo';
+        if (!empty($_FILES[$photoField]['name'])) {
+            $upload_result = uploadFile($_FILES[$photoField], 'users');
             if ($upload_result['success']) {
                 $data['photo_path'] = $upload_result['path'];
                 if (!empty($user['photo_path'])) {
@@ -212,12 +351,44 @@ class AdminController {
             }
         }
         
+        // Validaciones básicas
+        if (empty($data['first_name']) || empty($data['last_name']) || empty($data['email'])) {
+            $message = 'Los campos nombre, apellido y email son obligatorios';
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                return;
+            }
+            Session::setFlash('error', $message);
+            redirect('/admin/users/edit/' . $id);
+            return;
+        }
+        
         $result = $this->userModel->update($id, $data);
         
         if ($result['success']) {
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Usuario actualizado exitosamente'
+                ]);
+                return;
+            }
             Session::setFlash('success', $result['message']);
             redirect('/admin/users');
         } else {
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+                return;
+            }
             Session::setFlash('error', $result['message']);
             redirect('/admin/users/edit/' . $id);
         }
@@ -227,29 +398,83 @@ class AdminController {
      * Eliminar usuario
      */
     public function deleteUser($id) {
+        error_log("=== deleteUser START ===");
+        error_log("User ID to delete: " . $id);
+        error_log("Current user ID: " . Session::get('user_id'));
+        error_log("Is AJAX: " . ($this->isAjaxRequest() ? 'true' : 'false'));
+        
+        // Limpiar cualquier output buffer
+        if (ob_get_level()) {
+            ob_clean();
+        }
+        
         // No permitir eliminar el admin actual
         if ($id == Session::get('user_id')) {
-            Session::setFlash('error', 'No puedes eliminar tu propia cuenta');
+            $message = 'No puedes eliminar tu propia cuenta';
+            error_log("Trying to delete own account: " . $message);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                exit;
+            }
+            Session::setFlash('error', $message);
             redirect('/admin/users');
             return;
         }
         
         $user = $this->userModel->findById($id);
+        error_log("User found: " . ($user ? json_encode($user) : 'null'));
+        
         if (!$user) {
-            Session::setFlash('error', 'Usuario no encontrado');
+            $message = 'Usuario no encontrado';
+            error_log("User not found: " . $message);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $message
+                ]);
+                exit;
+            }
+            Session::setFlash('error', $message);
             redirect('/admin/users');
             return;
         }
         
+        error_log("Attempting to delete user: " . json_encode($user));
         $result = $this->userModel->delete($id);
+        error_log("Delete result: " . json_encode($result));
         
         if ($result['success']) {
             // Eliminar foto si existe
             if (!empty($user['photo_path'])) {
+                error_log("Deleting photo: " . $user['photo_path']);
                 deleteFile($user['photo_path']);
+            }
+            
+            if ($this->isAjaxRequest()) {
+                error_log("Sending success JSON response");
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $result['message']
+                ]);
+                exit;
             }
             Session::setFlash('success', $result['message']);
         } else {
+            error_log("Delete failed: " . $result['message']);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+                exit;
+            }
             Session::setFlash('error', $result['message']);
         }
         
@@ -491,6 +716,31 @@ class AdminController {
         }
     }
     
+    /**
+     * Detectar si es una petición AJAX
+     */
+    private function isAjaxRequest() {
+        // Verificar si la petición viene de una API
+        $isApiRequest = strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false;
+        
+        // Verificar headers AJAX
+        $isXmlHttpRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        
+        // Verificar Content-Type JSON
+        $isJsonRequest = isset($_SERVER['CONTENT_TYPE']) && 
+                        strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false;
+        
+        // Parámetro de formato
+        $hasJsonFormat = isset($_GET['format']) && $_GET['format'] === 'json';
+        
+        $result = $isApiRequest || $isXmlHttpRequest || $isJsonRequest || $hasJsonFormat;
+        
+        error_log("isAjaxRequest check - API: $isApiRequest, XMLHttp: $isXmlHttpRequest, JSON: $isJsonRequest, Format: $hasJsonFormat, Result: $result");
+        
+        return $result;
+    }
+    
     // ==========================================
     // MÉTODOS API
     // ==========================================
@@ -563,13 +813,16 @@ class AdminController {
             // Formatear datos para la tabla
             $formattedUsers = array_map(function($user) {
                 return [
-                    'id' => $user['id'],
+                    'user_id' => $user['id'],
                     'first_name' => $user['first_name'],
                     'last_name' => $user['last_name'],
                     'email' => $user['email'],
-                    'role' => $user['user_type'],
-                    'is_active' => $user['status'] === 'active',
-                    'created_at' => date('d/m/Y', strtotime($user['created_at']))
+                    'user_type' => $user['user_type'],
+                    'status' => $user['status'],
+                    'phone' => $user['phone'] ?? '',
+                    'cedula' => $user['cedula'] ?? '',
+                    'created_at' => $user['created_at'],
+                    'last_login' => $user['last_login'] ?? null
                 ];
             }, $users);
             
@@ -593,7 +846,7 @@ class AdminController {
         $this->requireAdminRole();
         
         try {
-            $user = $this->userModel->getById($id);
+            $user = $this->userModel->findById($id);
             
             if (!$user) {
                 echo json_encode([
@@ -682,4 +935,67 @@ class AdminController {
             ]);
         }
     }
+      
+    /**
+     * API: Cambiar estado de usuario
+     */
+    public function apiToggleUserStatus($id) {
+        $this->requireAdminRole();
+        
+        try {
+            // Establecer cabeceras para JSON
+            header('Content-Type: application/json');
+            
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Método no permitido'
+                ]);
+                return;
+            }
+            
+            // Verificar que el usuario existe
+            $user = $this->userModel->findById($id);
+            if (!$user) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ]);
+                return;
+            }
+            
+            // No permitir cambiar el estado del admin actual
+            if ($id == Session::get('user_id')) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No puedes cambiar tu propio estado'
+                ]);
+                return;
+            }
+            
+            // Cambiar estado
+            $newStatus = $user['status'] === 'active' ? 'inactive' : 'active';
+            $result = $this->userModel->changeStatus($id, $newStatus);
+            
+            if ($result['success']) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'new_status' => $newStatus
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $result['message']
+                ]);
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al cambiar estado: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
 }
