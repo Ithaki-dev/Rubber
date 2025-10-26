@@ -518,7 +518,70 @@ ob_start();
             <!-- Sección Configuración -->
             <div id="settings-section" class="content-section d-none">
                 <h2><i class="bi bi-gear me-2"></i>Configuración</h2>
-                <p class="text-muted">Funcionalidad de configuración en desarrollo...</p>
+                <p class="text-muted">Ajustes de contacto de soporte y configuración de correo SMTP.</p>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div id="settingsAlertPlaceholder"></div>
+                        <form id="settingsForm">
+                            <h6>Soporte</h6>
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Teléfono de Soporte</label>
+                                    <input type="text" id="supportPhone" name="support_phone" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Email de Soporte</label>
+                                    <input type="email" id="supportEmail" name="support_email" class="form-control">
+                                </div>
+                            </div>
+
+                            <h6>SMTP (Correo saliente)</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Host</label>
+                                    <input type="text" id="smtpHost" name="smtp[host]" class="form-control">
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <label class="form-label">Puerto</label>
+                                    <input type="number" id="smtpPort" name="smtp[port]" class="form-control">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Encriptación</label>
+                                    <select id="smtpEncryption" name="smtp[encryption]" class="form-select">
+                                        <option value="">Ninguna</option>
+                                        <option value="tls">TLS</option>
+                                        <option value="ssl">SSL</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Usuario</label>
+                                    <input type="text" id="smtpUser" name="smtp[username]" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Contraseña</label>
+                                    <input type="password" id="smtpPass" name="smtp[password]" class="form-control">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">From email</label>
+                                    <input type="email" id="smtpFromEmail" name="smtp[from_email]" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">From name</label>
+                                    <input type="text" id="smtpFromName" name="smtp[from_name]" class="form-control">
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="button" id="settingsSaveBtn" class="btn btn-primary">Guardar Configuración</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
             
         </div>
@@ -755,6 +818,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (targetSection === 'reports') {
                 // Inicializar reportes
                 initReportsSection();
+            } else if (targetSection === 'settings') {
+                // Inicializar sección de configuración
+                initSettingsSection();
             }
         });
     });
@@ -2059,6 +2125,102 @@ function renderUsersCharts(series) {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
+    }
+}
+
+// ==================================================
+// SETTINGS: load/save admin settings (support + smtp)
+// ==================================================
+
+function initSettingsSection() {
+    const saveBtn = document.getElementById('settingsSaveBtn');
+    if (saveBtn && !saveBtn._inited) {
+        saveBtn.addEventListener('click', saveSettings);
+        saveBtn._inited = true;
+    }
+    loadSettings();
+}
+
+function showSettingsInlineAlert(message, type = 'info') {
+    const place = document.getElementById('settingsAlertPlaceholder');
+    if (!place) return;
+    place.innerHTML = `<div class="alert alert-${type} alert-dismissible" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+}
+
+async function loadSettings() {
+    showSettingsInlineAlert('Cargando configuración...', 'info');
+    try {
+        const resp = await fetch(`${BASE_URL}/api/admin/settings`);
+        const json = await resp.json();
+        if (!json.success) {
+            showSettingsInlineAlert('Error al cargar configuración: ' + (json.message||''), 'danger');
+            return;
+        }
+        const s = json.settings || {};
+        document.getElementById('supportPhone').value = s.support_phone || '';
+        document.getElementById('supportEmail').value = s.support_email || (s.admin_email || '');
+        const smtp = s.smtp || {};
+        document.getElementById('smtpHost').value = smtp.host || '';
+        document.getElementById('smtpPort').value = smtp.port || '';
+        document.getElementById('smtpEncryption').value = smtp.encryption || '';
+        document.getElementById('smtpUser').value = smtp.username || '';
+        // Do not pre-fill password for security; leave empty
+        document.getElementById('smtpPass').value = '';
+        document.getElementById('smtpFromEmail').value = smtp.from_email || '';
+        document.getElementById('smtpFromName').value = smtp.from_name || '';
+
+        showSettingsInlineAlert('Configuración cargada', 'success');
+    } catch (err) {
+        console.error('loadSettings error', err);
+        showSettingsInlineAlert('Error de conexión al cargar configuración', 'danger');
+    }
+}
+
+async function saveSettings() {
+    const btn = document.getElementById('settingsSaveBtn');
+    btn.disabled = true;
+    const payload = {
+        support_phone: document.getElementById('supportPhone').value || '',
+        support_email: document.getElementById('supportEmail').value || '',
+        smtp: {
+            host: document.getElementById('smtpHost').value || '',
+            port: document.getElementById('smtpPort').value || '',
+            encryption: document.getElementById('smtpEncryption').value || '',
+            username: document.getElementById('smtpUser').value || '',
+            password: document.getElementById('smtpPass').value || '',
+            from_email: document.getElementById('smtpFromEmail').value || '',
+            from_name: document.getElementById('smtpFromName').value || ''
+        }
+    };
+
+    showSettingsInlineAlert('Guardando configuración...', 'info');
+    try {
+        const resp = await fetch(`${BASE_URL}/api/admin/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const json = await resp.json();
+        if (!json.success) {
+            // If server returned detailed results, show them
+            let detail = json.message || 'Error desconocido';
+            if (json.failed) {
+                const keys = Object.keys(json.failed);
+                detail += '\nDetalles:\n' + keys.map(k => `${k}: ${json.failed[k].message || JSON.stringify(json.failed[k])}`).join('\n');
+            }
+            showSettingsInlineAlert(detail.replace(/\n/g, '<br/>'), 'danger');
+            return;
+        }
+
+        // Success
+        showSettingsInlineAlert('Configuración guardada correctamente', 'success');
+        // Clear password field after save
+        document.getElementById('smtpPass').value = '';
+    } catch (err) {
+        console.error('saveSettings error', err);
+        showSettingsInlineAlert('Error de conexión al guardar configuración', 'danger');
+    } finally {
+        btn.disabled = false;
     }
 }
 
