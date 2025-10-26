@@ -1043,20 +1043,31 @@ document.addEventListener('DOMContentLoaded', function() {
             const url = currentRideId ? `${BASE_URL}/api/admin/rides/${currentRideId}` : `${BASE_URL}/api/admin/rides`;
             document.getElementById('rideSaveSpinner').classList.remove('d-none');
             fetch(url, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: formData })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert('success', data.message || 'Guardado');
-                    loadRidesData();
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('rideModal'));
-                    if (modal) modal.hide();
-                } else {
-                    showAlert('error', data.message || 'Error al guardar');
+            .then(async r => {
+                console.log('Save ride response status:', r.status, 'content-type:', r.headers.get('Content-Type'));
+                const text = await r.text();
+                // Intentar parsear JSON; si falla, loguear el texto crudo para depuración
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success) {
+                        showAlert('success', data.message || 'Guardado');
+                        loadRidesData();
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('rideModal'));
+                        if (modal) modal.hide();
+                    } else {
+                        showAlert('error', data.message || 'Error al guardar');
+                    }
+                } catch (e) {
+                    console.error('Save ride raw response (not JSON):', text);
+                    // Mostrar al usuario un mensaje más informativo
+                    showAlert('error', 'Respuesta inválida del servidor. Revisa la consola para más detalles.');
+                    // Re-lanzar para que el .catch también reciba el error
+                    throw e;
                 }
             })
             .catch(err => {
                 console.error('Save ride error', err);
-                showAlert('error','Error de conexión');
+                showAlert('error','Error de conexión o respuesta inválida');
             })
             .finally(() => document.getElementById('rideSaveSpinner').classList.add('d-none'));
         });
