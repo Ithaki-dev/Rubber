@@ -66,6 +66,22 @@ ob_start();
                                                 <input type="date" class="form-control" id="rideDate" name="ride_date" required>
                                             </div>
                                         </div>
+                                        
+                                        <!-- Driver & Vehicle selects -->
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="rideDriver" class="form-label">Conductor *</label>
+                                                <select id="rideDriver" name="driver_id" class="form-select" required>
+                                                    <option value="">Cargando conductores...</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="rideVehicle" class="form-label">Vehículo *</label>
+                                                <select id="rideVehicle" name="vehicle_id" class="form-select" required disabled>
+                                                    <option value="">Seleccione un conductor primero</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label for="departureLocation" class="form-label">Origen *</label>
@@ -740,6 +756,7 @@ function renderUsersTable(users) {
 
 let currentRideId = null;
 let ridesData = [];
+let vehiclesMap = {}; // vehicleId -> vehicle object (capacity etc)
 
 function loadRidesData() {
     const container = document.getElementById('ridesTableContainer');
@@ -771,6 +788,78 @@ function loadRidesData() {
         .catch(err => {
             console.error('Error loading rides:', err);
             container.innerHTML = `<div class="text-center py-4 text-muted">Error de conexión</div>`;
+        });
+}
+
+// Cargar lista de drivers (conductores activos) y poblar el select
+function loadDriversIntoModal(selectedDriverId = null) {
+    const driverSelect = document.getElementById('rideDriver');
+    const vehicleSelect = document.getElementById('rideVehicle');
+
+    if (!driverSelect) return Promise.resolve();
+
+    driverSelect.innerHTML = '<option value="">Cargando conductores...</option>';
+    vehicleSelect.innerHTML = '<option value="">Seleccione un conductor primero</option>';
+    vehicleSelect.disabled = true;
+
+    return fetch(`${BASE_URL}/admin/drivers`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                driverSelect.innerHTML = '<option value="">Error al cargar conductores</option>';
+                return;
+            }
+            const drivers = data.drivers || [];
+            driverSelect.innerHTML = '<option value="">Seleccionar conductor</option>' + drivers.map(d => `
+                <option value="${d.id}" ${selectedDriverId && d.id == selectedDriverId ? 'selected' : ''}>
+                    ${d.first_name} ${d.last_name} ${d.cedula ? ' - ' + d.cedula : ''}
+                </option>
+            `).join('');
+
+            // If a driver is selected, load their vehicles
+            if (selectedDriverId) {
+                return loadVehiclesForDriver(selectedDriverId, null);
+            }
+        })
+        .catch(err => {
+            console.error('Error loading drivers', err);
+            driverSelect.innerHTML = '<option value="">Error al cargar conductores</option>';
+        });
+}
+
+// Cargar vehículos para un driver y poblar el select
+function loadVehiclesForDriver(driverId, selectedVehicleId = null) {
+    const vehicleSelect = document.getElementById('rideVehicle');
+    if (!vehicleSelect) return;
+
+    vehicleSelect.innerHTML = '<option value="">Cargando vehículos...</option>';
+    vehicleSelect.disabled = true;
+
+    return fetch(`${BASE_URL}/admin/drivers/${driverId}/vehicles`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                vehicleSelect.innerHTML = '<option value="">Error al cargar vehículos</option>';
+                return;
+            }
+            const vehicles = data.vehicles || [];
+            vehiclesMap = {};
+            if (vehicles.length === 0) {
+                vehicleSelect.innerHTML = '<option value="">El conductor no tiene vehículos</option>';
+                vehicleSelect.disabled = true;
+                return;
+            }
+
+            vehicleSelect.innerHTML = '<option value="">Seleccionar vehículo</option>' + vehicles.map(v => {
+                vehiclesMap[v.id] = v;
+                return `<option value="${v.id}" ${selectedVehicleId && v.id == selectedVehicleId ? 'selected' : ''}>${v.display}</option>`;
+            }).join('');
+            vehicleSelect.disabled = false;
+        })
+        .catch(err => {
+            console.error('Error loading vehicles', err);
+            vehicleSelect.innerHTML = '<option value="">Error al cargar vehículos</option>';
+            vehicleSelect.disabled = true;
         });
 }
 
@@ -842,8 +931,11 @@ function showCreateRideModal() {
     document.getElementById('rideForm').reset();
     document.getElementById('rideModalLabel').textContent = 'Nuevo Viaje';
     document.getElementById('rideSaveText').textContent = 'Crear';
-    const modal = new bootstrap.Modal(document.getElementById('rideModal'));
-    modal.show();
+    // Cargar drivers y limpiar vehicle select
+    loadDriversIntoModal().then(() => {
+        const modal = new bootstrap.Modal(document.getElementById('rideModal'));
+        modal.show();
+    });
 }
 
 function editRide(rideId) {
@@ -860,8 +952,13 @@ function editRide(rideId) {
     document.getElementById('rideTime').value = ride.ride_time;
     document.getElementById('costPerSeat').value = ride.cost_per_seat || '';
     document.getElementById('totalSeats').value = ride.total_seats || '';
-    const modal = new bootstrap.Modal(document.getElementById('rideModal'));
-    modal.show();
+    // Cargar drivers y seleccionar el actual, luego cargar vehículos del driver y seleccionar el vehículo
+    loadDriversIntoModal(ride.driver_id).then(() => {
+        return loadVehiclesForDriver(ride.driver_id, ride.vehicle_id);
+    }).then(() => {
+        const modal = new bootstrap.Modal(document.getElementById('rideModal'));
+        modal.show();
+    });
 }
 
 function showDeleteRideModal(rideId) {
@@ -900,9 +997,49 @@ function confirmDeleteRide() {
 document.addEventListener('DOMContentLoaded', function() {
     const rideForm = document.getElementById('rideForm');
     if (rideForm) {
+        // Cuando cambia el driver, cargar vehículos correspondientes
+        const rideDriverSelect = document.getElementById('rideDriver');
+        if (rideDriverSelect) {
+            rideDriverSelect.addEventListener('change', function() {
+                const driverId = this.value;
+                if (driverId) {
+                    loadVehiclesForDriver(driverId);
+                } else {
+                    const vehicleSelect = document.getElementById('rideVehicle');
+                    vehicleSelect.innerHTML = '<option value="">Seleccione un conductor primero</option>';
+                    vehicleSelect.disabled = true;
+                }
+            });
+        }
+
         rideForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(rideForm);
+            // Validaciones cliente: vehicle obligatorio
+            const driverId = formData.get('driver_id');
+            const vehicleId = formData.get('vehicle_id');
+            if (!driverId) {
+                showAlert('error', 'Seleccione un conductor');
+                return;
+            }
+            if (!vehicleId) {
+                showAlert('error', 'Seleccione un vehículo');
+                return;
+            }
+
+            // Validar total seats vs vehicle capacity - 1 (driver)
+            const totalSeats = Number(formData.get('total_seats') || 0);
+            const vehicle = vehiclesMap[vehicleId];
+            if (!vehicle) {
+                showAlert('error', 'Vehículo inválido');
+                return;
+            }
+            const vehicleCapacity = Number(vehicle.capacity || 0);
+            const maxAllowed = Math.max(0, vehicleCapacity - 1);
+            if (totalSeats > maxAllowed) {
+                showAlert('error', `El vehículo tiene capacidad ${vehicleCapacity}. Máximo asientos disponibles para viaje: ${maxAllowed}`);
+                return;
+            }
             const url = currentRideId ? `${BASE_URL}/api/admin/rides/${currentRideId}` : `${BASE_URL}/api/admin/rides`;
             document.getElementById('rideSaveSpinner').classList.remove('d-none');
             fetch(url, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: formData })

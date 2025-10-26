@@ -90,6 +90,32 @@ try {
                         }
                     }
                     break;
+                case 'rides':
+                    error_log("API Rides route - Method: $httpMethod, ID: $apiId");
+                    if ($httpMethod === 'GET') {
+                        if (empty($apiId)) {
+                            // GET /api/admin/rides - Listar viajes
+                            $adminController->apiRides();
+                        } else {
+                            // GET /api/admin/rides/{id} - Usuario específico (no implementado)
+                            echo json_encode(['success' => false, 'message' => 'Endpoint no implementado']);
+                        }
+                    } elseif ($httpMethod === 'POST') {
+                        if (empty($apiId)) {
+                            // POST /api/admin/rides - Crear viaje
+                            $adminController->createRide();
+                        } else {
+                            $subAction = $params[2] ?? '';
+                            if ($subAction === 'delete') {
+                                // POST /api/admin/rides/{id}/delete
+                                $adminController->deleteRide($apiId);
+                            } else {
+                                // POST /api/admin/rides/{id} - Actualizar viaje
+                                $adminController->updateRide($apiId);
+                            }
+                        }
+                    }
+                    break;
                     
                 case 'reports':
                     if (!empty($apiId)) {
@@ -496,6 +522,27 @@ try {
                 } else {
                     // GET /admin/users - Listar
                     $adminController->listUsers();
+                }
+                break;
+
+            // ==========================================
+            // DRIVERS (lista de choferes y vehículos por chofer)
+            // Rutas antiguas: /admin/drivers and /admin/drivers/{id}/vehicles
+            // ==========================================
+            case 'drivers':
+                if (isset($params[0])) {
+                    if (isset($params[1]) && $params[1] === 'vehicles') {
+                        // GET /admin/drivers/{id}/vehicles
+                        $adminController->driverVehicles($params[0]);
+                    } else {
+                        // Not found
+                        require_once __DIR__ . '/../controllers/HomeController.php';
+                        $homeController = new HomeController();
+                        $homeController->notFound();
+                    }
+                } else {
+                    // GET /admin/drivers - Listar conductores activos
+                    $adminController->drivers();
                 }
                 break;
             

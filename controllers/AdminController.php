@@ -654,15 +654,137 @@ class AdminController {
      * Eliminar viaje
      */
     public function deleteRide($id) {
+        error_log("=== admin deleteRide START === id: $id");
+        // Limpiar output buffer
+        if (ob_get_level()) ob_clean();
+
         $result = $this->rideModel->delete($id);
-        
+
+        if ($this->isAjaxRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result);
+            exit;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
+
         redirect('/admin/rides');
+    }
+
+    /**
+     * API: Listar viajes (JSON)
+     */
+    public function apiRides() {
+        $this->requireAdminRole();
+
+        try {
+            $filters = [
+                'search' => $_GET['search'] ?? '',
+                'is_active' => isset($_GET['active']) ? (int)$_GET['active'] : null
+            ];
+            $filters = array_filter($filters, function($v){ return $v !== null && $v !== ''; });
+
+            $rides = $this->rideModel->getAll($filters);
+
+            $formatted = array_map(function($r) {
+                return [
+                    'ride_id' => $r['id'],
+                    'ride_name' => $r['ride_name'],
+                    'driver_id' => $r['driver_id'] ?? null,
+                    'vehicle_id' => $r['vehicle_id'] ?? null,
+                    'departure_location' => $r['departure_location'] ?? '',
+                    'arrival_location' => $r['arrival_location'] ?? '',
+                    'ride_date' => $r['ride_date'] ?? '',
+                    'ride_time' => $r['ride_time'] ?? '',
+                    'cost_per_seat' => $r['cost_per_seat'] ?? 0,
+                    'total_seats' => $r['total_seats'] ?? 0,
+                    'is_active' => isset($r['is_active']) ? (bool)$r['is_active'] : true
+                ];
+            }, $rides);
+
+            echo json_encode(['success' => true, 'rides' => $formatted]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error al cargar viajes: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Crear viaje (admin) - acepta POST
+     */
+    public function createRide() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect('/admin/rides');
+            return;
+        }
+
+        $data = [
+            'driver_id' => sanitize($_POST['driver_id'] ?? ''),
+            'vehicle_id' => sanitize($_POST['vehicle_id'] ?? ''),
+            'ride_name' => sanitize($_POST['ride_name'] ?? ''),
+            'departure_location' => sanitize($_POST['departure_location'] ?? ''),
+            'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
+            'ride_date' => sanitize($_POST['ride_date'] ?? ''),
+            'ride_time' => sanitize($_POST['ride_time'] ?? ''),
+            'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
+            'total_seats' => sanitize($_POST['total_seats'] ?? '')
+        ];
+
+        $result = $this->rideModel->create($data);
+
+        if ($this->isAjaxRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result);
+            exit;
+        }
+
+        if ($result['success']) {
+            Session::setFlash('success', $result['message']);
+            redirect('/admin/rides');
+        } else {
+            Session::setFlash('error', $result['message']);
+            Session::setFlash('old_input', $data);
+            redirect('/admin/rides');
+        }
+    }
+
+    /**
+     * Actualizar viaje (admin)
+     */
+    public function updateRide($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            redirect('/admin/rides');
+            return;
+        }
+
+        $data = [
+            'ride_name' => sanitize($_POST['ride_name'] ?? ''),
+            'departure_location' => sanitize($_POST['departure_location'] ?? ''),
+            'arrival_location' => sanitize($_POST['arrival_location'] ?? ''),
+            'ride_date' => sanitize($_POST['ride_date'] ?? ''),
+            'ride_time' => sanitize($_POST['ride_time'] ?? ''),
+            'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
+            'total_seats' => sanitize($_POST['total_seats'] ?? '')
+        ];
+
+        $result = $this->rideModel->update($id, $data);
+
+        if ($this->isAjaxRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result);
+            exit;
+        }
+
+        if ($result['success']) {
+            Session::setFlash('success', $result['message']);
+            redirect('/admin/rides');
+        } else {
+            Session::setFlash('error', $result['message']);
+            redirect('/admin/rides');
+        }
     }
     
     // ==========================================
@@ -889,6 +1011,61 @@ class AdminController {
                 'success' => false,
                 'message' => 'Error al cargar usuarios: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Listar choferes activos (JSON)
+     * Ruta: GET /admin/drivers
+     */
+    public function drivers() {
+        $this->requireAdminRole();
+
+        try {
+            $drivers = $this->userModel->getAll(['user_type' => 'driver', 'status' => 'active']);
+            $formatted = array_map(function($d) {
+                return [
+                    'id' => $d['id'],
+                    'first_name' => $d['first_name'],
+                    'last_name' => $d['last_name'],
+                    'email' => $d['email'] ?? '',
+                    'cedula' => $d['cedula'] ?? ''
+                ];
+            }, $drivers);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'drivers' => $formatted]);
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Listar vehículos de un chofer (JSON)
+     * Ruta: GET /admin/drivers/{id}/vehicles
+     */
+    public function driverVehicles($driverId) {
+        $this->requireAdminRole();
+
+        try {
+            $vehicles = $this->vehicleModel->getByDriver($driverId);
+            $formatted = array_map(function($v) {
+                return [
+                    'id' => $v['id'],
+                    'plate' => $v['plate'] ?? $v['license_plate'] ?? '',
+                    'make' => $v['make'] ?? '',
+                    'model' => $v['model'] ?? '',
+                    'capacity' => isset($v['capacity']) ? (int)$v['capacity'] : (int)($v['seats'] ?? 0),
+                    'display' => trim(($v['make'] ?? '') . ' ' . ($v['model'] ?? '') . ' - ' . ($v['plate'] ?? ''))
+                ];
+            }, $vehicles);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'vehicles' => $formatted]);
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
     

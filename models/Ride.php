@@ -58,12 +58,13 @@ class Ride {
             return ['success' => false, 'message' => 'Vehículo no encontrado'];
         }
         
-        // Si no se especifica total_seats, usar la capacidad del vehículo
-        $total_seats = $data['total_seats'] ?? $vehicle_capacity;
-        
-        // Validar que total_seats no exceda la capacidad
-        if ($total_seats > $vehicle_capacity) {
-            return ['success' => false, 'message' => "El vehículo solo tiene capacidad para $vehicle_capacity asientos"];
+        // Si no se especifica total_seats, usar la capacidad disponible (vehículo - 1 por el conductor)
+        $max_allowed = max(0, $vehicle_capacity - 1);
+        $total_seats = isset($data['total_seats']) && $data['total_seats'] !== '' ? (int)$data['total_seats'] : $max_allowed;
+
+        // Validar que total_seats no exceda la capacidad disponible (vehículo - 1)
+        if ($total_seats > $max_allowed) {
+            return ['success' => false, 'message' => "El vehículo tiene capacidad $vehicle_capacity; máximo asientos disponibles para pasajeros: $max_allowed"];
         }
         
         // Calcular día de la semana
@@ -238,8 +239,8 @@ class Ride {
         $fields = [];
         $values = [];
         
-        $allowed_fields = ['ride_name', 'departure_location', 'arrival_location', 
-                          'ride_date', 'ride_time', 'cost_per_seat', 'is_active'];
+    $allowed_fields = ['ride_name', 'departure_location', 'arrival_location', 
+              'ride_date', 'ride_time', 'cost_per_seat', 'is_active', 'driver_id', 'vehicle_id', 'total_seats'];
         
         foreach ($allowed_fields as $field) {
             if (isset($data[$field])) {
@@ -251,6 +252,27 @@ class Ride {
                     $fields[] = "day_of_week = ?";
                     $values[] = $this->getDayOfWeek($data[$field]);
                 }
+            }
+        }
+
+        // Si se intentan cambiar driver/vehicle o total_seats, validar relaciones y capacidades
+        if (isset($data['vehicle_id']) || isset($data['driver_id']) || isset($data['total_seats'])) {
+            $newDriver = isset($data['driver_id']) ? $data['driver_id'] : $ride['driver_id'];
+            $newVehicle = isset($data['vehicle_id']) ? $data['vehicle_id'] : $ride['vehicle_id'];
+
+            // Validar que el vehículo pertenece al chofer
+            if (!$this->vehicleBelongsToDriver($newVehicle, $newDriver)) {
+                return ['success' => false, 'message' => 'Vehículo no válido para este chofer'];
+            }
+
+            $vehicle_capacity = $this->getVehicleCapacity($newVehicle);
+            if (!$vehicle_capacity) {
+                return ['success' => false, 'message' => 'Vehículo no encontrado'];
+            }
+
+            $max_allowed = max(0, $vehicle_capacity - 1);
+            if (isset($data['total_seats']) && (int)$data['total_seats'] > $max_allowed) {
+                return ['success' => false, 'message' => "El vehículo tiene capacidad $vehicle_capacity; máximo asientos disponibles para pasajeros: $max_allowed"];
             }
         }
         
