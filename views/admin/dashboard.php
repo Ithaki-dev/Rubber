@@ -44,6 +44,87 @@ ob_start();
                     <a href="<?= BASE_URL ?>/auth/logout" class="btn btn-outline-danger btn-sm">
                         <i class="bi bi-box-arrow-right me-1"></i>Salir
                     </a>
+
+                    <!-- Modal: Crear/Editar Viaje -->
+                    <div class="modal fade" id="rideModal" tabindex="-1" aria-labelledby="rideModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="rideModalLabel">Nuevo Viaje</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form id="rideForm">
+                                    <div class="modal-body">
+                                        <input type="hidden" id="rideId" name="rideId">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="rideName" class="form-label">Nombre del Viaje *</label>
+                                                <input type="text" class="form-control" id="rideName" name="ride_name" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="rideDate" class="form-label">Fecha *</label>
+                                                <input type="date" class="form-control" id="rideDate" name="ride_date" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="departureLocation" class="form-label">Origen *</label>
+                                                <input type="text" class="form-control" id="departureLocation" name="departure_location" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="arrivalLocation" class="form-label">Destino *</label>
+                                                <input type="text" class="form-control" id="arrivalLocation" name="arrival_location" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="rideTime" class="form-label">Hora *</label>
+                                                <input type="time" class="form-control" id="rideTime" name="ride_time" required>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="costPerSeat" class="form-label">Costo por Asiento</label>
+                                                <input type="number" step="0.01" class="form-control" id="costPerSeat" name="cost_per_seat">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="totalSeats" class="form-label">Asientos Totales</label>
+                                                <input type="number" class="form-control" id="totalSeats" name="total_seats">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <span id="rideSaveText">Guardar</span>
+                                            <span id="rideSaveSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: Confirmar Eliminación Viaje -->
+                    <div class="modal fade" id="deleteRideModal" tabindex="-1" aria-labelledby="deleteRideModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteRideModalLabel">Confirmar Eliminación</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
+                                    <h5 class="mt-3">¿Estás seguro que deseas eliminar este viaje?</h5>
+                                    <p class="text-muted">Esta acción es irreversible.</p>
+                                    <div class="mt-2"><strong id="deleteRideInfo"></strong></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-danger" onclick="confirmDeleteRide()">Eliminar Viaje</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </a>
                 </div>
             </div>
         </div>
@@ -255,8 +336,62 @@ ob_start();
             
             <!-- Sección Viajes -->
             <div id="rides-section" class="content-section d-none">
-                <h2><i class="bi bi-car-front me-2"></i>Gestión de Viajes</h2>
-                <p class="text-muted">Funcionalidad de viajes en desarrollo...</p>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-car-front me-2"></i>Gestión de Viajes</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-success" onclick="showCreateRideModal()">
+                            <i class="bi bi-plus me-1"></i>Nuevo Viaje
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="refreshRidesTable()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros de Viajes -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Buscar</label>
+                                <input type="text" class="form-control" id="rideSearchInput" placeholder="Buscar por nombre, origen, destino...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" id="rideActiveFilter">
+                                    <option value="">Todos</option>
+                                    <option value="1">Activos</option>
+                                    <option value="0">Inactivos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 align-self-end">
+                                <button class="btn btn-primary w-100" onclick="filterRides()">
+                                    <i class="bi bi-search me-1"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Viajes -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Lista de Viajes</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted me-3">Total: <span id="totalRidesCount">0</span></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="ridesTableContainer">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Cargando viajes...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Sección Vehículos -->
@@ -434,6 +569,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Cargar datos específicos de la sección
             if (targetSection === 'users') {
                 loadUsersData();
+            } else if (targetSection === 'rides') {
+                // Cargar viajes al mostrar la sección
+                loadRidesData();
             }
         });
     });
@@ -595,6 +733,198 @@ function renderUsersTable(users) {
     
     container.innerHTML = tableHTML;
 }
+
+// ==========================================
+// GESTIÓN DE VIAJES
+// ==========================================
+
+let currentRideId = null;
+let ridesData = [];
+
+function loadRidesData() {
+    const container = document.getElementById('ridesTableContainer');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando viajes...</p>
+        </div>
+    `;
+
+    const params = new URLSearchParams();
+    const search = document.getElementById('rideSearchInput') ? document.getElementById('rideSearchInput').value : '';
+    const active = document.getElementById('rideActiveFilter') ? document.getElementById('rideActiveFilter').value : '';
+    if (search) params.append('search', search);
+    if (active !== '') params.append('active', active);
+
+    fetch(`${BASE_URL}/api/admin/rides` + (params.toString() ? ('?' + params.toString()) : ''))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                ridesData = data.rides;
+                renderRidesTable(ridesData);
+            } else {
+                container.innerHTML = `<div class="text-center py-4 text-muted">Error: ${data.message || 'No se pudieron cargar los viajes'}</div>`;
+            }
+        })
+        .catch(err => {
+            console.error('Error loading rides:', err);
+            container.innerHTML = `<div class="text-center py-4 text-muted">Error de conexión</div>`;
+        });
+}
+
+function renderRidesTable(rides) {
+    const container = document.getElementById('ridesTableContainer');
+    const totalCount = document.getElementById('totalRidesCount');
+
+    const sorted = Array.isArray(rides) ? rides.slice().sort((a,b) => Number(a.ride_id) - Number(b.ride_id)) : [];
+    totalCount.textContent = sorted.length;
+
+    if (sorted.length === 0) {
+        container.innerHTML = `<div class="text-center py-5 text-muted">No hay viajes</div>`;
+        return;
+    }
+
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Fecha / Hora</th>
+                        <th>Costo</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sorted.map(r => `
+                        <tr>
+                            <td>#${r.ride_id}</td>
+                            <td>${r.ride_name}</td>
+                            <td>${r.departure_location}</td>
+                            <td>${r.arrival_location}</td>
+                            <td>${r.ride_date} ${r.ride_time}</td>
+                            <td>${r.cost_per_seat ? r.cost_per_seat : 'N/A'}</td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="editRide(${r.ride_id})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="showDeleteRideModal(${r.ride_id})" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function filterRides() {
+    loadRidesData();
+}
+
+function refreshRidesTable() {
+    loadRidesData();
+}
+
+function showCreateRideModal() {
+    currentRideId = null;
+    document.getElementById('rideForm').reset();
+    document.getElementById('rideModalLabel').textContent = 'Nuevo Viaje';
+    document.getElementById('rideSaveText').textContent = 'Crear';
+    const modal = new bootstrap.Modal(document.getElementById('rideModal'));
+    modal.show();
+}
+
+function editRide(rideId) {
+    const ride = ridesData.find(r => r.ride_id == rideId);
+    if (!ride) { showAlert('error','Viaje no encontrado'); return; }
+    currentRideId = rideId;
+    document.getElementById('rideModalLabel').textContent = 'Editar Viaje';
+    document.getElementById('rideSaveText').textContent = 'Actualizar';
+    document.getElementById('rideId').value = ride.ride_id;
+    document.getElementById('rideName').value = ride.ride_name;
+    document.getElementById('departureLocation').value = ride.departure_location;
+    document.getElementById('arrivalLocation').value = ride.arrival_location;
+    document.getElementById('rideDate').value = ride.ride_date;
+    document.getElementById('rideTime').value = ride.ride_time;
+    document.getElementById('costPerSeat').value = ride.cost_per_seat || '';
+    document.getElementById('totalSeats').value = ride.total_seats || '';
+    const modal = new bootstrap.Modal(document.getElementById('rideModal'));
+    modal.show();
+}
+
+function showDeleteRideModal(rideId) {
+    const ride = ridesData.find(r => r.ride_id == rideId);
+    if (!ride) { showAlert('error','Viaje no encontrado'); return; }
+    currentRideId = rideId;
+    document.getElementById('deleteRideInfo').textContent = `${ride.ride_name} (${ride.departure_location} → ${ride.arrival_location})`;
+    const modal = new bootstrap.Modal(document.getElementById('deleteRideModal'));
+    modal.show();
+}
+
+function confirmDeleteRide() {
+    if (!currentRideId) return;
+    fetch(`${BASE_URL}/api/admin/rides/${currentRideId}/delete`, {
+        method: 'POST',
+        headers: {'X-Requested-With':'XMLHttpRequest'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message || 'Viaje eliminado');
+            loadRidesData();
+        } else {
+            showAlert('error', data.message || 'Error al eliminar');
+        }
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRideModal'));
+        if (modal) modal.hide();
+    })
+    .catch(err => {
+        console.error('Delete ride error', err);
+        showAlert('error','Error de conexión');
+    });
+}
+
+// Manejar envío del formulario de viajes
+document.addEventListener('DOMContentLoaded', function() {
+    const rideForm = document.getElementById('rideForm');
+    if (rideForm) {
+        rideForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(rideForm);
+            const url = currentRideId ? `${BASE_URL}/api/admin/rides/${currentRideId}` : `${BASE_URL}/api/admin/rides`;
+            document.getElementById('rideSaveSpinner').classList.remove('d-none');
+            fetch(url, { method: 'POST', headers: {'X-Requested-With':'XMLHttpRequest'}, body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message || 'Guardado');
+                    loadRidesData();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('rideModal'));
+                    if (modal) modal.hide();
+                } else {
+                    showAlert('error', data.message || 'Error al guardar');
+                }
+            })
+            .catch(err => {
+                console.error('Save ride error', err);
+                showAlert('error','Error de conexión');
+            })
+            .finally(() => document.getElementById('rideSaveSpinner').classList.add('d-none'));
+        });
+    }
+});
 
 function getUserTypeBadgeClass(type) {
     const classes = {
