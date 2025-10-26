@@ -451,34 +451,37 @@ class User {
                 $errors[] = 'Tipo de usuario inválido';
             }
             
-            if (empty($data['password']) || !$this->validator->validatePassword($data['password'])) {
-                $errors[] = 'La contraseña debe tener al menos 8 caracteres';
+            if (empty($data['password']) || strlen($data['password']) < 6) {
+                $errors[] = 'La contraseña debe tener al menos 6 caracteres';
             }
         }
         
         // Validaciones comunes
-        if (isset($data['first_name']) && !$this->validator->validateName($data['first_name'])) {
+        if (isset($data['first_name']) && (empty($data['first_name']) || !preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/', $data['first_name']))) {
             $errors[] = 'Nombre inválido';
         }
         
-        if (isset($data['last_name']) && !$this->validator->validateName($data['last_name'])) {
+        if (isset($data['last_name']) && (empty($data['last_name']) || !preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/', $data['last_name']))) {
             $errors[] = 'Apellido inválido';
         }
         
-        if (isset($data['cedula']) && !$this->validator->validateCedula($data['cedula'])) {
+        if (isset($data['cedula']) && !empty($data['cedula']) && !preg_match('/^\d{1,10}$/', $data['cedula'])) {
             $errors[] = 'Cédula inválida';
         }
         
-        if (isset($data['email']) && !$this->validator->validateEmail($data['email'])) {
+        if (isset($data['email']) && !empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Email inválido';
         }
         
-        if (isset($data['phone']) && !$this->validator->validatePhone($data['phone'])) {
+        if (isset($data['phone']) && !empty($data['phone']) && !preg_match('/^\+?[\d\s\-\(\)]{7,15}$/', $data['phone'])) {
             $errors[] = 'Teléfono inválido';
         }
         
-        if (isset($data['birth_date']) && !$this->validator->validateDate($data['birth_date'])) {
-            $errors[] = 'Fecha de nacimiento inválida';
+        if (isset($data['birth_date']) && !empty($data['birth_date'])) {
+            $d = DateTime::createFromFormat('Y-m-d', $data['birth_date']);
+            if (!$d || $d->format('Y-m-d') !== $data['birth_date']) {
+                $errors[] = 'Fecha de nacimiento inválida';
+            }
         }
         
         return [
