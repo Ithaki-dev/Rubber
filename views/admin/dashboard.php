@@ -981,23 +981,16 @@ function loadDriversIntoVehicleModal(selectedDriverId = null) {
 
 function editVehicle(vehicleId) {
     const modal = new bootstrap.Modal(document.getElementById('vehicleModal'));
-    // Cargar datos del servidor (usar admin controller showVehicle)
-    fetch(`${BASE_URL}/admin/vehicles/${vehicleId}`)
-        .then(r => r.text())
-        .then(text => {
-            // La vista /admin/vehicles/{id} puede devolver una página HTML; intentar obtener JSON desde un endpoint alterno
-            try {
-                const data = JSON.parse(text);
-                if (!data.success) throw new Error('No JSON data');
-                populateVehicleForm(data.vehicle);
-                modal.show();
-            } catch (e) {
-                // Fallback: hacer request a un endpoint API si existe
-                // Intentar GET /api/admin/vehicles/{id} (no implementado por defecto)
-                console.warn('editVehicle: response not JSON, attempting to parse HTML for form data');
-                // As a fallback, open the vehicle details page in a new tab for admin editing
-                window.open(`${BASE_URL}/admin/vehicles/${vehicleId}`, '_blank');
+    // Preferimos consumir el endpoint API que devuelve JSON
+    fetch(`${BASE_URL}/api/admin/vehicles/${vehicleId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                showAlert('error', data.message || 'No se pudo cargar el vehículo');
+                return;
             }
+            populateVehicleForm(data.vehicle);
+            modal.show();
         })
         .catch(err => {
             console.error('Error loading vehicle for edit', err);

@@ -119,8 +119,13 @@ try {
                 case 'vehicles':
                     error_log("API Vehicles route - Method: $httpMethod, ID: $apiId");
                     if ($httpMethod === 'GET') {
-                        // GET /api/admin/vehicles - Listar vehículos
-                        $adminController->apiVehicles();
+                        if (empty($apiId)) {
+                            // GET /api/admin/vehicles - Listar vehículos
+                            $adminController->apiVehicles();
+                        } else {
+                            // GET /api/admin/vehicles/{id} - Obtener vehículo
+                            $adminController->apiVehicle($apiId);
+                        }
                     } else {
                         echo json_encode(['success' => false, 'message' => 'Método no permitido para vehicles']);
                     }

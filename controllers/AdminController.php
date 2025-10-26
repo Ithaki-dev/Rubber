@@ -766,6 +766,42 @@ class AdminController {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * API: Obtener un vehículo específico (JSON)
+     * Ruta: GET /api/admin/vehicles/{id}
+     */
+    public function apiVehicle($id) {
+        $this->requireAdminRole();
+
+        try {
+            $vehicle = $this->vehicleModel->findById($id);
+            if (!$vehicle) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Vehículo no encontrado']);
+                return;
+            }
+
+            $formatted = [
+                'id' => $vehicle['id'],
+                'plate_number' => $vehicle['plate_number'] ?? $vehicle['plate'] ?? '',
+                'brand' => $vehicle['brand'] ?? '',
+                'model' => $vehicle['model'] ?? '',
+                'year' => $vehicle['year'] ?? '',
+                'seats_capacity' => isset($vehicle['seats_capacity']) ? (int)$vehicle['seats_capacity'] : (int)($vehicle['capacity'] ?? 0),
+                'is_active' => isset($vehicle['is_active']) ? (bool)$vehicle['is_active'] : true,
+                'driver_id' => $vehicle['driver_id'] ?? null,
+                'driver_first_name' => $vehicle['driver_first_name'] ?? '',
+                'driver_last_name' => $vehicle['driver_last_name'] ?? ''
+            ];
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'vehicle' => $formatted]);
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
     
     // ==========================================
     // VIAJES
