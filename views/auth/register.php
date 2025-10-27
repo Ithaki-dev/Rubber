@@ -14,7 +14,7 @@ ob_start();
                         <p class="text-muted">Únete a la comunidad de Carpooling UTN</p>
                     </div>
 
-                    <form action="<?= BASE_URL ?>/auth/register" method="POST" class="needs-validation" novalidate>
+                    <form action="<?= BASE_URL ?>/auth/register" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         <?php
                         // Generar token CSRF
                         if (!isset($_SESSION['csrf_token'])) {
@@ -79,6 +79,43 @@ ob_start();
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cedula" class="form-label">
+                                    <i class="bi bi-card-text me-1"></i>Cédula
+                                </label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="cedula"
+                                    name="cedula"
+                                    value="<?= htmlspecialchars($_POST['cedula'] ?? '') ?>"
+                                    required
+                                    maxlength="10"
+                                >
+                                <div class="invalid-feedback">
+                                    Por favor ingresa tu cédula.
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="birth_date" class="form-label">
+                                    <i class="bi bi-calendar-event me-1"></i>Fecha de Nacimiento
+                                </label>
+                                <input
+                                    type="date"
+                                    class="form-control"
+                                    id="birth_date"
+                                    name="birth_date"
+                                    value="<?= htmlspecialchars($_POST['birth_date'] ?? '') ?>"
+                                    required
+                                >
+                                <div class="invalid-feedback">
+                                    Por favor ingresa tu fecha de nacimiento.
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="phone" class="form-label">
                                 <i class="bi bi-telephone me-1"></i>Teléfono
@@ -127,6 +164,20 @@ ob_start();
                         </div>
 
                         <div class="mb-3">
+                            <label for="photo" class="form-label">
+                                <i class="bi bi-card-image me-1"></i>Foto de perfil (JPG/PNG)
+                            </label>
+                            <input
+                                type="file"
+                                class="form-control"
+                                id="photo"
+                                name="photo"
+                                accept="image/png, image/jpeg"
+                            >
+                            <div class="form-text">Opcional. Solo JPG o PNG. Máx 5MB.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="password_confirm" class="form-label">
                                 <i class="bi bi-lock-fill me-1"></i>Confirmar Contraseña
                             </label>
@@ -159,10 +210,10 @@ ob_start();
                                         <input 
                                             class="form-check-input" 
                                             type="radio" 
-                                            name="role" 
+                                            name="user_type" 
                                             id="passenger" 
                                             value="passenger" 
-                                            <?= ($_POST['role'] ?? '') === 'passenger' ? 'checked' : '' ?>
+                                            <?= ($_POST['user_type'] ?? '') === 'passenger' ? 'checked' : '' ?>
                                             required
                                         >
                                         <label class="form-check-label" for="passenger">
@@ -176,10 +227,10 @@ ob_start();
                                         <input 
                                             class="form-check-input" 
                                             type="radio" 
-                                            name="role" 
+                                            name="user_type" 
                                             id="driver" 
                                             value="driver"
-                                            <?= ($_POST['role'] ?? '') === 'driver' ? 'checked' : '' ?>
+                                            <?= ($_POST['user_type'] ?? '') === 'driver' ? 'checked' : '' ?>
                                         >
                                         <label class="form-check-label" for="driver">
                                             <i class="bi bi-car-front me-1"></i>Conductor
