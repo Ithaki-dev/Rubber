@@ -43,10 +43,28 @@ class AuthController {
             redirect('/auth/register');
             return;
         }
+        // Log para depuración del formulario público
+        error_log('=== AuthController::register START ===');
+        error_log('Request method: ' . ($_SERVER['REQUEST_METHOD'] ?? '')); 
+        error_log('Request URI: ' . ($_SERVER['REQUEST_URI'] ?? '')); 
+        error_log('POST keys: ' . json_encode(array_keys($_POST))); 
+        error_log('FILES keys: ' . json_encode(array_keys($_FILES))); 
+        // Verificar CSRF token
+        $csrf = $_POST['csrf_token'] ?? '';
+        error_log('CSRF token from POST: ' . substr($csrf, 0, 16));
+        $csrf_ok = verifyCsrfToken($csrf);
+        error_log('CSRF verify result: ' . ($csrf_ok ? 'true' : 'false'));
+        if (!$csrf_ok) {
+            Session::setFlash('error', 'Token CSRF inválido. Intenta nuevamente.');
+            error_log('AuthController::register - CSRF invalid, redirecting back to register');
+            redirect('/auth/register');
+            return;
+        }
         
         // Obtener datos del formulario
+        // Aceptar 'user_type' o nombre antiguo 'role' (compatibilidad) y por defecto 'passenger'
         $data = [
-            'user_type' => sanitize($_POST['user_type'] ?? ''),
+            'user_type' => sanitize($_POST['user_type'] ?? $_POST['role'] ?? 'passenger'),
             'first_name' => sanitize($_POST['first_name'] ?? ''),
             'last_name' => sanitize($_POST['last_name'] ?? ''),
             'cedula' => sanitize($_POST['cedula'] ?? ''),
@@ -65,20 +83,21 @@ class AuthController {
             return;
         }
         
-        // Manejar foto (opcional)
+        // Manejar foto (opcional) -> usar uploadImage y carpeta 'profiles'
         $photo_path = null;
         if (!empty($_FILES['photo']['name'])) {
-            $upload_result = uploadFile($_FILES['photo'], 'users');
-            if ($upload_result['success']) {
+            $upload_result = uploadImage($_FILES['photo'], 'profiles');
+            if (!empty($upload_result['success']) && $upload_result['success'] === true) {
                 $photo_path = $upload_result['path'];
             } else {
-                Session::setFlash('error', $upload_result['message']);
+                $err = $upload_result['error'] ?? ($upload_result['message'] ?? 'Error subiendo la imagen');
+                Session::setFlash('error', $err);
                 Session::setFlash('old_input', $data);
                 redirect('/auth/register');
                 return;
             }
         }
-        
+
         $data['photo_path'] = $photo_path;
         
         // Crear usuario
@@ -112,6 +131,8 @@ class AuthController {
             
             redirect('/auth/login?registered=1');
         } else {
+            // Log del resultado para ayudar a debugging (no exponer detalles al usuario)
+            error_log('Registro fallido: ' . print_r($result, true));
             Session::setFlash('error', $result['message']);
             Session::setFlash('old_input', $data);
             redirect('/auth/register');
