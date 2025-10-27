@@ -85,11 +85,17 @@ ob_start();
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label for="departureLocation" class="form-label">Origen *</label>
-                                                <input type="text" class="form-control" id="departureLocation" name="departure_location" required>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="departureLocation" name="departure_location" required>
+                                                    <button class="btn btn-outline-secondary" type="button" id="pickDepartureBtn" title="Seleccionar en mapa">Map</button>
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label for="arrivalLocation" class="form-label">Destino *</label>
-                                                <input type="text" class="form-control" id="arrivalLocation" name="arrival_location" required>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="arrivalLocation" name="arrival_location" required>
+                                                    <button class="btn btn-outline-secondary" type="button" id="pickArrivalBtn" title="Seleccionar en mapa">Map</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="row">
@@ -106,6 +112,11 @@ ob_start();
                                                 <input type="number" class="form-control" id="totalSeats" name="total_seats">
                                             </div>
                                         </div>
+                                        <!-- Hidden inputs to store coordinates -->
+                                        <input type="hidden" id="departureLat" name="departure_lat">
+                                        <input type="hidden" id="departureLng" name="departure_lng">
+                                        <input type="hidden" id="arrivalLat" name="arrival_lat">
+                                        <input type="hidden" id="arrivalLng" name="arrival_lng">
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -271,6 +282,28 @@ ob_start();
                                     </table>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Pick on Map -->
+            <div class="modal fade" id="rideMapModal" tabindex="-1" aria-labelledby="rideMapModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="rideMapModalLabel">Seleccionar Punto en el Mapa</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-2">
+                                <small class="text-muted">Haz click en el mapa para colocar el marcador. Puedes arrastrarlo para ajustar la posición.</small>
+                            </div>
+                            <div id="rideMap" style="width:100%;height:60vh;border:1px solid #ddd;border-radius:4px;"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="rideMapAccept">Aceptar</button>
                         </div>
                     </div>
                 </div>
@@ -782,6 +815,11 @@ ob_start();
 
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Ride map logic -->
+<script src="<?= BASE_URL ?>/js/ride-map.js"></script>
 <script>
 // Expose BASE_URL to the external admin dashboard script
 const BASE_URL = '<?= BASE_URL ?>';
