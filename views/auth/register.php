@@ -100,22 +100,6 @@ ob_start();
                         </div>
 
                         <div class="mb-3">
-                            <label for="student_id" class="form-label">
-                                <i class="bi bi-card-text me-1"></i>Carné Estudiantil (Opcional)
-                            </label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="student_id" 
-                                name="student_id" 
-                                value="<?= htmlspecialchars($_POST['student_id'] ?? '') ?>"
-                                placeholder="B12345"
-                                maxlength="10"
-                            >
-                            <div class="form-text">Si eres estudiante de la UTN</div>
-                        </div>
-
-                        <div class="mb-3">
                             <label for="password" class="form-label">
                                 <i class="bi bi-lock me-1"></i>Contraseña
                             </label>
