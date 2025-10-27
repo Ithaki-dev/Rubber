@@ -231,7 +231,7 @@ class User {
         }
         
         // Activar la cuenta
-        $sql = "UPDATE users SET status = 'active', activation_token = NULL, activated_at = NOW() WHERE id = ?";
+        $sql = "UPDATE users SET status = 'active', activation_token = NULL WHERE id = ?";
         
         try {
             $this->db->query($sql, [$user['id']]);
