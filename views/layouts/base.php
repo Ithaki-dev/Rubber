@@ -80,49 +80,48 @@
 
     <!-- Main Content -->
     <main class="pt-5 mt-3">
-        <?php if (isset($_SESSION['success'])): ?>
-            <div class="container">
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <?= $_SESSION['success'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-            <?php unset($_SESSION['success']); ?>
-        <?php endif; ?>
+        <?php
+            // Mostrar mensajes flash (compatibilidad con Session::setFlash)
+            if (class_exists('Session')) {
+                $flash = Session::getFlashMessage();
+                if (!empty($flash) && isset($flash['type'], $flash['message'])) {
+                    $type = $flash['type'];
+                    // Sólo renderizamos tipos de alert conocidos; otros (old_input, etc.) se usan internamente
+                    $allowedTypes = ['success', 'error', 'warning', 'info'];
+                    if (in_array($type, $allowedTypes)) {
+                        $msg = $flash['message'];
+                        $alertClass = 'info';
+                        $icon = 'bi-info-circle';
 
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="container">
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <?= $_SESSION['error'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
-        
-        <?php if (isset($_SESSION['warning'])): ?>
-            <div class="container">
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-circle me-2"></i>
-                    <?= $_SESSION['warning'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-            <?php unset($_SESSION['warning']); ?>
-        <?php endif; ?>
-        
-        <?php if (isset($_SESSION['info'])): ?>
-            <div class="container">
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <?= $_SESSION['info'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-            <?php unset($_SESSION['info']); ?>
-        <?php endif; ?>
+                        switch ($type) {
+                            case 'success':
+                                $alertClass = 'success';
+                                $icon = 'bi-check-circle';
+                                break;
+                            case 'error':
+                                $alertClass = 'danger';
+                                $icon = 'bi-exclamation-triangle';
+                                break;
+                            case 'warning':
+                                $alertClass = 'warning';
+                                $icon = 'bi-exclamation-circle';
+                                break;
+                            case 'info':
+                            default:
+                                $alertClass = 'info';
+                                $icon = 'bi-info-circle';
+                                break;
+                        }
+
+                        echo '<div class="container">';
+                        echo '<div class="alert alert-' . $alertClass . ' alert-dismissible fade show" role="alert">';
+                        echo '<i class="bi ' . $icon . ' me-2"></i>' . $msg;
+                        echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                        echo '</div></div>';
+                    }
+                }
+            }
+        ?>
 
         <?= $content ?? '' ?>
     </main>
@@ -152,7 +151,7 @@
             </div>
             <hr>
             <div class="text-center">
-                <small>&copy; <?= date('Y') ?> Universidad Técnica Nacional. Todos los derechos reservados.</small>
+                <small>&copy; <?= date('Y') ?> Ithakidev. Todos los derechos reservados.</small>
             </div>
         </div>
     </footer>
