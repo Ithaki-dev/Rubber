@@ -299,8 +299,25 @@ function loadVehiclesForDriver(driverId, selectedVehicleId = null) {
             }
 
             vehicleSelect.innerHTML = '<option value="">Seleccionar vehículo</option>' + vehicles.map(v => {
-                vehiclesMap[v.id] = v;
-                return `<option value="${v.id}" ${selectedVehicleId && v.id == selectedVehicleId ? 'selected' : ''}>${v.display}</option>`;
+                // Normalize vehicle object into vehiclesMap and provide a capacity field
+                const normalized = Object.assign({}, v, {
+                    capacity: Number(v.seats_capacity || v.capacity || 0)
+                });
+                vehiclesMap[v.id] = normalized;
+
+                // Build a readable label for the option
+                const brandModel = [v.brand, v.model].filter(Boolean).join(' ').trim();
+                const plate = v.plate_number || v.plate || '';
+                let label = '';
+                if (brandModel && plate) label = `${brandModel} - ${plate}`;
+                else if (brandModel) label = brandModel;
+                else if (plate) label = plate;
+                else label = `Vehículo #${v.id}`;
+
+                // Escape basic HTML entities in label to avoid injection (minimal)
+                const esc = String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                return `<option value="${v.id}" ${selectedVehicleId && v.id == selectedVehicleId ? 'selected' : ''}>${esc}</option>`;
             }).join('');
             vehicleSelect.disabled = false;
         })
@@ -601,7 +618,10 @@ function editRide(rideId) {
     document.getElementById('departureLocation').value = ride.departure_location;
     document.getElementById('arrivalLocation').value = ride.arrival_location;
     document.getElementById('rideDate').value = ride.ride_date;
-    document.getElementById('rideTime').value = ride.ride_time;
+    // Normalize time to HH:MM for input[type=time] (strip seconds if present)
+    const rawTime = ride.ride_time || '';
+    const timeVal = rawTime && rawTime.indexOf(':') !== -1 ? rawTime.split(':').slice(0,2).join(':') : rawTime;
+    document.getElementById('rideTime').value = timeVal;
     document.getElementById('costPerSeat').value = ride.cost_per_seat || '';
     document.getElementById('totalSeats').value = ride.total_seats || '';
     // Cargar drivers y seleccionar el actual, luego cargar vehículos del driver y seleccionar el vehículo
