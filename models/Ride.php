@@ -18,6 +18,10 @@ class Ride {
     public $ride_name;
     public $departure_location;
     public $arrival_location;
+    public $departure_lat;
+    public $departure_lng;
+    public $arrival_lat;
+    public $arrival_lng;
     public $ride_date;
     public $ride_time;
     public $day_of_week;
@@ -72,8 +76,9 @@ class Ride {
         
         $sql = "INSERT INTO rides 
                 (driver_id, vehicle_id, ride_name, departure_location, arrival_location, 
-                 ride_date, ride_time, day_of_week, cost_per_seat, available_seats, total_seats, is_active) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+         ride_date, ride_time, day_of_week, cost_per_seat, available_seats, total_seats, is_active,
+         departure_lat, departure_lng, arrival_lat, arrival_lng) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
             $stmt = $this->db->query($sql, [
@@ -88,7 +93,11 @@ class Ride {
                 $data['cost_per_seat'],
                 $total_seats, // available_seats = total_seats al crear
                 $total_seats,
-                $data['is_active'] ?? 1
+                $data['is_active'] ?? 1,
+                isset($data['departure_lat']) && $data['departure_lat'] !== '' ? (float)$data['departure_lat'] : null,
+                isset($data['departure_lng']) && $data['departure_lng'] !== '' ? (float)$data['departure_lng'] : null,
+                isset($data['arrival_lat']) && $data['arrival_lat'] !== '' ? (float)$data['arrival_lat'] : null,
+                isset($data['arrival_lng']) && $data['arrival_lng'] !== '' ? (float)$data['arrival_lng'] : null
             ]);
             
             $ride_id = $this->db->getConnection()->lastInsertId();
@@ -240,7 +249,8 @@ class Ride {
         $values = [];
         
     $allowed_fields = ['ride_name', 'departure_location', 'arrival_location', 
-              'ride_date', 'ride_time', 'cost_per_seat', 'is_active', 'driver_id', 'vehicle_id', 'total_seats'];
+              'ride_date', 'ride_time', 'cost_per_seat', 'is_active', 'driver_id', 'vehicle_id', 'total_seats',
+              'departure_lat', 'departure_lng', 'arrival_lat', 'arrival_lng'];
         
         foreach ($allowed_fields as $field) {
             if (isset($data[$field])) {
@@ -521,6 +531,30 @@ class Ride {
             if (empty($data['cost_per_seat']) || !$this->validator->validatePrice($data['cost_per_seat'])) {
                 $errors[] = 'Costo por asiento inválido';
             }
+
+            // Coordenadas opcionales: si se proveen, validar formato y rango
+            $latLngFields = [
+                ['lat' => 'departure_lat', 'lng' => 'departure_lng'],
+                ['lat' => 'arrival_lat', 'lng' => 'arrival_lng']
+            ];
+            foreach ($latLngFields as $pair) {
+                if (isset($data[$pair['lat']]) || isset($data[$pair['lng']])) {
+                    $lat = $data[$pair['lat']] ?? null;
+                    $lng = $data[$pair['lng']] ?? null;
+                    if ($lat === '' || $lng === '') {
+                        $errors[] = 'Coordenadas incompletas para ' . str_replace('_', ' ', $pair['lat']);
+                    } else {
+                        if (!is_numeric($lat) || !is_numeric($lng)) {
+                            $errors[] = 'Coordenadas inválidas';
+                        } else {
+                            $lat = (float)$lat; $lng = (float)$lng;
+                            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                                $errors[] = 'Coordenadas fuera de rango';
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         // Validaciones para actualización
@@ -539,6 +573,30 @@ class Ride {
             
             if (isset($data['cost_per_seat']) && !$this->validator->validatePrice($data['cost_per_seat'])) {
                 $errors[] = 'Costo por asiento inválido';
+            }
+
+            // Validar lat/lng opcionales en update
+            $latLngFields = [
+                ['lat' => 'departure_lat', 'lng' => 'departure_lng'],
+                ['lat' => 'arrival_lat', 'lng' => 'arrival_lng']
+            ];
+            foreach ($latLngFields as $pair) {
+                if (isset($data[$pair['lat']]) || isset($data[$pair['lng']])) {
+                    $lat = $data[$pair['lat']] ?? null;
+                    $lng = $data[$pair['lng']] ?? null;
+                    if ($lat === '' || $lng === '') {
+                        $errors[] = 'Coordenadas incompletas para ' . str_replace('_', ' ', $pair['lat']);
+                    } else {
+                        if (!is_numeric($lat) || !is_numeric($lng)) {
+                            $errors[] = 'Coordenadas inválidas';
+                        } else {
+                            $lat = (float)$lat; $lng = (float)$lng;
+                            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                                $errors[] = 'Coordenadas fuera de rango';
+                            }
+                        }
+                    }
+                }
             }
         }
         

@@ -301,8 +301,23 @@ class DriverController {
             'ride_date' => sanitize($_POST['ride_date'] ?? ''),
             'ride_time' => sanitize($_POST['ride_time'] ?? ''),
             'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? ''),
-            'total_seats' => sanitize($_POST['total_seats'] ?? '')
+            'total_seats' => sanitize($_POST['total_seats'] ?? ''),
+            // Optional coordinates: include only if both lat and lng are provided
         ];
+
+        $depLatRaw = isset($_POST['departure_lat']) ? trim($_POST['departure_lat']) : '';
+        $depLngRaw = isset($_POST['departure_lng']) ? trim($_POST['departure_lng']) : '';
+        if ($depLatRaw !== '' && $depLngRaw !== '') {
+            $data['departure_lat'] = $depLatRaw;
+            $data['departure_lng'] = $depLngRaw;
+        }
+
+        $arrLatRaw = isset($_POST['arrival_lat']) ? trim($_POST['arrival_lat']) : '';
+        $arrLngRaw = isset($_POST['arrival_lng']) ? trim($_POST['arrival_lng']) : '';
+        if ($arrLatRaw !== '' && $arrLngRaw !== '') {
+            $data['arrival_lat'] = $arrLatRaw;
+            $data['arrival_lng'] = $arrLngRaw;
+        }
         
         $result = $this->rideModel->create($data);
         
@@ -382,6 +397,20 @@ class DriverController {
             'ride_time' => sanitize($_POST['ride_time'] ?? ''),
             'cost_per_seat' => sanitize($_POST['cost_per_seat'] ?? '')
         ];
+
+        // Accept optional coordinates on update only when both lat and lng provided
+        $depLatRaw = isset($_POST['departure_lat']) ? trim($_POST['departure_lat']) : '';
+        $depLngRaw = isset($_POST['departure_lng']) ? trim($_POST['departure_lng']) : '';
+        if ($depLatRaw !== '' && $depLngRaw !== '') {
+            $data['departure_lat'] = $depLatRaw;
+            $data['departure_lng'] = $depLngRaw;
+        }
+        $arrLatRaw = isset($_POST['arrival_lat']) ? trim($_POST['arrival_lat']) : '';
+        $arrLngRaw = isset($_POST['arrival_lng']) ? trim($_POST['arrival_lng']) : '';
+        if ($arrLatRaw !== '' && $arrLngRaw !== '') {
+            $data['arrival_lat'] = $arrLatRaw;
+            $data['arrival_lng'] = $arrLngRaw;
+        }
         
         $result = $this->rideModel->update($id, $data);
         
