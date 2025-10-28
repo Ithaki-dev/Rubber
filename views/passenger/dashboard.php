@@ -9,8 +9,25 @@ ob_start();
         <div class="col-lg-3 col-md-4 bg-light border-end vh-100 position-sticky top-0 pt-5">
             <div class="p-3">
                 <div class="text-center mb-4">
-                    <i class="bi bi-person-circle display-4 text-primary"></i>
-                    <h5 class="mt-2">¡Hola <?= htmlspecialchars(Session::getCurrentUser()['first_name']) ?>!</h5>
+                    <?php
+                    $user = Session::getCurrentUser();
+                    // Try common keys used in the app for the uploaded photo                   
+                    $profileImg = $user['photo_path'] ?? $user['photo'] ?? $user['pr'] ?? '';
+                    ?>
+                    <?php if (!empty($profileImg)): ?>
+                        <?php
+                            // Build a full URL for the profile image. If $profileImg is already absolute (http...), use it as-is.
+                            if (preg_match('#^https?://#i', $profileImg)) {
+                                $imgUrl = $profileImg;
+                            } else {
+                                $imgUrl = rtrim(BASE_URL, '/') . '/' . ltrim($profileImg, '/');
+                            }
+                        ?>
+                        <img src="<?= htmlspecialchars($imgUrl) ?>" alt="Avatar de <?= htmlspecialchars($user['first_name'] ?? '') ?>" class="user-profile rounded-circle" width="96" height="96">
+                    <?php else: ?>
+                        <i class="bi bi-person-circle display-4 text-primary"></i>
+                    <?php endif; ?>
+                    <h5 class="mt-2">¡Hola <?= htmlspecialchars($user['first_name'] ?? '') ?>!</h5>
                     <small class="text-muted">Pasajero</small>
                 </div>
 
@@ -74,43 +91,43 @@ ob_start();
                         </div>
                     </div>
 
-                                        <!-- Map-based Available Rides -->
-                                        <div class="card mb-0">
-                                                <div class="card-header d-flex justify-content-between align-items-center">
-                                                        <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Mapa de Viajes</h5>
-                                                        <div>
-                                                                <button id="centerMapBtn" class="btn btn-sm btn-outline-secondary me-2">Centrar Quesada</button>
-                                                                <button id="refreshMapBtn" class="btn btn-sm btn-outline-primary">Actualizar</button>
-                                                        </div>
-                                                </div>
-                                                <div class="card-body p-0" style="height:70vh;">
-                                                        <div id="passengerMap" style="width:100%; height:100%;"></div>
-                                                </div>
-                                        </div>
+                    <!-- Map-based Available Rides -->
+                    <div class="card mb-0">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Mapa de Viajes</h5>
+                            <div>
+                                <button id="centerMapBtn" class="btn btn-sm btn-outline-secondary me-2">Centrar Quesada</button>
+                                <button id="refreshMapBtn" class="btn btn-sm btn-outline-primary">Actualizar</button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0" style="height:70vh;">
+                            <div id="passengerMap" style="width:100%; height:100%;"></div>
+                        </div>
+                    </div>
 
-                                        <!-- Reservation modal (accessibility-ready) -->
-                                        <div class="modal fade" id="reserveModal" tabindex="-1" aria-labelledby="reserveModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="reserveModalLabel">Confirmar Reserva</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div id="reserveDetails"></div>
+                    <!-- Reservation modal (accessibility-ready) -->
+                    <div class="modal fade" id="reserveModal" tabindex="-1" aria-labelledby="reserveModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="reserveModalLabel">Confirmar Reserva</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div id="reserveDetails"></div>
 
-                                                        <div class="mb-3">
-                                                            <label for="reserveSeats" class="form-label">Número de asientos</label>
-                                                            <input type="number" id="reserveSeats" class="form-control" min="1" value="1" aria-label="Número de asientos">
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                        <button type="button" id="confirmReserveBtn" class="btn btn-primary" aria-label="Confirmar reserva">Reservar</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div class="mb-3">
+                                        <label for="reserveSeats" class="form-label">Número de asientos</label>
+                                        <input type="number" id="reserveSeats" class="form-control" min="1" value="1" aria-label="Número de asientos">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" id="confirmReserveBtn" class="btn btn-primary" aria-label="Confirmar reserva">Reservar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Reservations Section -->
@@ -222,7 +239,7 @@ ob_start();
 
 <!-- Leaflet CSS/JS and passenger map script -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" ></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="<?= BASE_URL ?>/js/passenger-map.js"></script>
 
 <?php
