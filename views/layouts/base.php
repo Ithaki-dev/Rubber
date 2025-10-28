@@ -7,6 +7,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>/css/style.css" rel="stylesheet">
+    <script>
+        // Exponer BASE_URL al cliente lo antes posible para que scripts en el cuerpo puedan usarlo
+        const BASE_URL = '<?= rtrim(BASE_URL, "\/") ?>';
+    </script>
 </head>
 <body>
     <!-- Navigation -->
