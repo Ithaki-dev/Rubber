@@ -20,8 +20,56 @@ class PassengerController {
         $this->reservationModel = new Reservation();
         $this->statistics = new Statistics();
         
-        // Verificar que el usuario es pasajero
-        $this->requirePassengerRole();
+        // Verificar que el usuario es pasajero para rutas que no sean API.
+        // Si la petición viene desde /api/..., permitimos acceso público (búsqueda pública).
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (strpos($uri, '/api/') === false) {
+            $this->requirePassengerRole();
+        }
+    }
+
+    /**
+     * API: Obtener viajes (JSON) — usado por el mapa del pasajero
+     * Parámetros GET soportados: bounds (swLat,swLng,neLat,neLng), date, date_from, date_to, seats, max_cost, search
+     */
+    public function apiRides() {
+        // Construir filtros a partir de query params
+        $filters = [];
+        if (!empty($_GET['bounds'])) {
+            $filters['bounds'] = sanitize($_GET['bounds']);
+        }
+        if (!empty($_GET['date'])) {
+            $filters['ride_date'] = sanitize($_GET['date']);
+        }
+        if (!empty($_GET['date_from'])) {
+            $filters['date_from'] = sanitize($_GET['date_from']);
+        }
+        if (!empty($_GET['date_to'])) {
+            $filters['date_to'] = sanitize($_GET['date_to']);
+        }
+        if (!empty($_GET['seats'])) {
+            $filters['min_seats'] = (int)$_GET['seats'];
+        }
+        if (!empty($_GET['max_cost'])) {
+            $filters['max_cost'] = (float)$_GET['max_cost'];
+        }
+        if (!empty($_GET['departure'])) {
+            $filters['departure_location'] = sanitize($_GET['departure']);
+        }
+        if (!empty($_GET['arrival'])) {
+            $filters['arrival_location'] = sanitize($_GET['arrival']);
+        }
+
+        // Llamar al modelo
+        header('Content-Type: application/json');
+        try {
+            $rides = $this->rideModel->search($filters);
+            echo json_encode(['success' => true, 'rides' => $rides]);
+        } catch (Exception $e) {
+            // Devolver error en JSON para no romper el cliente (evitar HTML)
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error en la consulta de viajes', 'detail' => $e->getMessage()]);
+        }
     }
     
     /**
@@ -127,7 +175,20 @@ class PassengerController {
         ];
         
         $result = $this->reservationModel->create($data);
-        
+
+        // Detectar petición AJAX para devolver JSON en lugar de redirigir
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message'], 'reservation_id' => $result['reservation_id'] ?? null]);
+            } else {
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            exit;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
             redirect('/passenger/reservations');
