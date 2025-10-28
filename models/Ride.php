@@ -204,7 +204,51 @@ class Ride {
             $sql .= " AND cost_per_seat <= ?";
             $params[] = $filters['max_cost'];
         }
+
+    // Filtrar por bounds (lat/lng) si se proporcionan: "lat1,lon1,lat2,lon2"
+    $boundsClause = '';
+    $boundsParams = [];
+    // Guardar SQL base antes de añadir bounds para poder reintentar sin ella
+    $sqlBase = $sql;
+    $paramsBase = $params;
+        if (!empty($filters['bounds'])) {
+            // Esperamos bounds como "southWestLat,southWestLng,northEastLat,northEastLng"
+            $parts = explode(',', $filters['bounds']);
+            if (count($parts) === 4) {
+                $swLat = (float)$parts[0];
+                $swLng = (float)$parts[1];
+                $neLat = (float)$parts[2];
+                $neLng = (float)$parts[3];
+
+                // Construimos la cláusula pero la añadiremos al SQL solo si la BD la soporta.
+                $boundsClause = " AND (
+                    (departure_lat BETWEEN ? AND ? AND departure_lng BETWEEN ? AND ?) 
+                    OR (arrival_lat BETWEEN ? AND ? AND arrival_lng BETWEEN ? AND ?)
+                )";
+
+                // departure bounds
+                $boundsParams[] = min($swLat, $neLat); // lat min
+                $boundsParams[] = max($swLat, $neLat); // lat max
+                $boundsParams[] = min($swLng, $neLng); // lng min
+                $boundsParams[] = max($swLng, $neLng); // lng max
+                // arrival bounds (same)
+                $boundsParams[] = min($swLat, $neLat);
+                $boundsParams[] = max($swLat, $neLat);
+                $boundsParams[] = min($swLng, $neLng);
+                $boundsParams[] = max($swLng, $neLng);
+            }
+        }
         
+        // Si hay cláusula de bounds, añadirla ahora (antes del ORDER BY)
+        if ($boundsClause) {
+            $sql = $sqlBase . $boundsClause;
+            // mezclar params (params base + bounds)
+            $params = array_merge($paramsBase, $boundsParams);
+        } else {
+            $sql = $sqlBase;
+            $params = $paramsBase;
+        }
+
         // Ordenar por fecha y hora
         $sql .= " ORDER BY ride_date ASC, ride_time ASC";
         
@@ -214,8 +258,28 @@ class Ride {
             $params[] = (int)$filters['limit'];
         }
         
-        $stmt = $this->db->query($sql, $params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Intentar ejecutar la consulta (con bounds si se añadieron). Si falla por columnas desconocidas,
+        // reintentar sin la cláusula de bounds.
+        try {
+            $stmt = $this->db->query($sql, $params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $msg = $e->getMessage();
+            if ($boundsClause && (stripos($msg, 'Unknown column') !== false || stripos($msg, 'doesn\'t exist') !== false || stripos($msg, 'Unknown column') !== false)) {
+                // Reintentar sin bounds: usar sqlBase + ORDER BY + LIMIT
+                try {
+                    $sqlFallback = $sqlBase . " ORDER BY ride_date ASC, ride_time ASC";
+                    // restore params to base (sin bounds)
+                    $stmt = $this->db->query($sqlFallback, $paramsBase);
+                    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e2) {
+                    error_log('Ride::search fallback failed: ' . $e2->getMessage());
+                    return [];
+                }
+            }
+
+            throw $e;
+        }
     }
     
     /**
