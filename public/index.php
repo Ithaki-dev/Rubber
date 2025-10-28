@@ -154,6 +154,24 @@ try {
             }
             exit;
         }
+        // Public API for rides (passenger-facing)
+        elseif ($method === 'rides') {
+            require_once __DIR__ . '/../controllers/PassengerController.php';
+            $passengerController = new PassengerController();
+
+            $apiAction = $params[0] ?? '';
+            $apiId = $params[1] ?? '';
+
+            // GET /api/rides[/available|/search]?bounds=...&date=...
+            if ($httpMethod === 'GET') {
+                // All GET actions map to apiRides which reads query params
+                $passengerController->apiRides();
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Método no permitido para esta API']);
+            }
+
+            exit;
+        }
     }
     
     // ==========================================
