@@ -118,7 +118,7 @@ ob_start();
 
                                     <div class="mb-3">
                                         <label for="reserveSeats" class="form-label">Número de asientos</label>
-                                        <input type="number" id="reserveSeats" class="form-control" min="1" value="1" aria-label="Número de asientos">
+                                        <input type="number" disabled="true" id="reserveSeats" class="form-control" min="1" value="1" aria-label="Número de asientos">
                                     </div>
                                 </div>
                                 <div class="modal-footer">
