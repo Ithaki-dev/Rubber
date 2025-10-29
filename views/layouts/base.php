@@ -6,7 +6,12 @@
     <title><?= $pageTitle ?? 'Carpooling UTN' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="<?= BASE_URL ?>/css/style.css" rel="stylesheet">
+    <?php
+    // Append file modification time to bust cache when styles change during development
+    $stylePath = __DIR__ . '/../../public/css/style.css';
+    $styleVer = file_exists($stylePath) ? filemtime($stylePath) : time();
+    ?>
+    <link href="<?= BASE_URL ?>/css/style.css?v=<?= $styleVer ?>" rel="stylesheet">
     <script>
         // Exponer BASE_URL al cliente lo antes posible para que scripts en el cuerpo puedan usarlo
         const BASE_URL = '<?= rtrim(BASE_URL, "\/") ?>';
