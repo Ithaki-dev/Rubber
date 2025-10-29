@@ -19,6 +19,7 @@
     const markersLayer = L.layerGroup().addTo(map);
 
     let currentMarkers = {};
+    let ridesCache = {};
     let pollTimer = null;
     let lastParams = {};
     let selectedRide = null;
@@ -71,8 +72,11 @@
     function updateMarkers(rides) {
         // Remove markers not present, update or add new ones
         const newIds = {};
+        // refresh cache
+        ridesCache = {};
 
         rides.forEach(ride => {
+            ridesCache[ride.id] = ride;
             newIds[ride.id] = true;
             const lat = parseFloat(ride.departure_lat) || parseFloat(ride.arrival_lat);
             const lng = parseFloat(ride.departure_lng) || parseFloat(ride.arrival_lng);
@@ -85,10 +89,11 @@
                 const m = L.marker([lat, lng]).addTo(markersLayer);
                 m.bindPopup(popupHtml(ride), {maxWidth: 300});
                 m.on('popupopen', () => {
-                    // attach event to reserve button
+                    // attach event to reserve button as a fallback
                     const btn = document.getElementById('reserve-btn-' + ride.id);
-                    if (btn) {
+                    if (btn && !btn._reserveBound) {
                         btn.addEventListener('click', () => openReserveModal(ride));
+                        btn._reserveBound = true;
                     }
                 });
                 currentMarkers[ride.id] = m;
@@ -121,7 +126,7 @@
                     <div><i class="bi bi-cash-stack me-1"></i>₡${price}</div>
                 </div>
                 <div class="mt-2 text-end">
-                    <button id="reserve-btn-${ride.id}" class="btn btn-sm btn-primary" aria-label="Reservar viaje ${escapeHtml(ride.ride_name || '')}">Reservar</button>
+                    <button id="reserve-btn-${ride.id}" data-reserve-ride="${ride.id}" class="btn btn-sm btn-primary" aria-label="Reservar viaje ${escapeHtml(ride.ride_name || '')}">Reservar</button>
                 </div>
             </div>
         `;
@@ -204,6 +209,21 @@
     // Attach controls
     document.getElementById('refreshMapBtn').addEventListener('click', fetchRidesForBounds);
     document.getElementById('centerMapBtn').addEventListener('click', () => map.setView(MAP_CENTER, MAP_ZOOM));
+
+    // Delegated click handler for popup reserve buttons. This avoids fragile bindings
+    // when Leaflet moves popup DOM nodes. Uses ridesCache populated by updateMarkers.
+    document.body.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-reserve-ride]');
+        if (!btn) return;
+        const rideId = btn.getAttribute('data-reserve-ride');
+        if (!rideId) return;
+        const ride = ridesCache[rideId];
+        if (!ride) {
+            console.warn('Ride not found in cache for id', rideId);
+            return;
+        }
+        openReserveModal(ride);
+    });
 
     map.on('moveend', () => {
         fetchRidesForBounds();
