@@ -84,13 +84,26 @@ class AuthController {
         }
         
         // Manejar foto (opcional) -> usar uploadImage y carpeta 'profiles'
+        // Solo procesar si realmente se envió un archivo (no solo un campo vacío)
         $photo_path = null;
-        if (!empty($_FILES['photo']['name'])) {
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+            // Si hubo algún error distinto a NO_FILE, manejarlo
+            if ($_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+                // Si el usuario no seleccionó archivo, UPLOAD_ERR_NO_FILE se habría manejado arriba
+                $phpFileErr = $_FILES['photo']['error'];
+                error_log('AuthController::register - photo upload PHP error: ' . $phpFileErr);
+                Session::setFlash('error', 'Error subiendo la imagen (código ' . $phpFileErr . ')');
+                Session::setFlash('old_input', $data);
+                redirect('/auth/register');
+                return;
+            }
+
             $upload_result = uploadImage($_FILES['photo'], 'profiles');
             if (!empty($upload_result['success']) && $upload_result['success'] === true) {
                 $photo_path = $upload_result['path'];
             } else {
                 $err = $upload_result['error'] ?? ($upload_result['message'] ?? 'Error subiendo la imagen');
+                error_log('AuthController::register - uploadImage failed: ' . print_r($upload_result, true));
                 Session::setFlash('error', $err);
                 Session::setFlash('old_input', $data);
                 redirect('/auth/register');
