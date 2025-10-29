@@ -219,7 +219,21 @@ class PassengerController {
         }
         
         $reservations = $this->reservationModel->getByPassenger($passenger_id, $filters);
-        
+
+        // If AJAX request, return JSON (used by dashboard JS to populate "Mis Reservas")
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            // DEBUG: include passenger_id and count to help client-side diagnostics
+            echo json_encode([
+                'success' => true,
+                'passenger_id' => $passenger_id,
+                'count' => count($reservations),
+                'reservations' => $reservations
+            ]);
+            return;
+        }
+
         require_once __DIR__ . '/../views/passenger/reservations/index.php';
     }
     
@@ -246,13 +260,26 @@ class PassengerController {
     public function cancelReservation($id) {
         $passenger_id = Session::get('user_id');
         $result = $this->reservationModel->cancel($id, $passenger_id);
-        
+
+        // If AJAX call, return JSON instead of redirecting
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
+
         redirect('/passenger/reservations');
     }
     
