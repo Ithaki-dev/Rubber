@@ -36,6 +36,14 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStats();
 });
 
+// Small helper to escape HTML used when rendering reservation items
+function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c];
+    });
+}
+
 function loadAvailableRides() {
     const container = document.getElementById('ridesContainer');
     
@@ -156,7 +164,111 @@ function clearFilters() {
 }
 
 function loadReservations() {
-    // TODO: Implement reservations loading
+    const container = document.getElementById('reservationsContainer');
+
+    // Show loader
+    container.innerHTML = '<div class="col-12 text-center"><div class="spinner-border" role="status"></div></div>';
+
+    fetch(`${BASE_URL}/passenger/reservations`, {
+        credentials: 'include',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(r => r.text())
+    .then(text => {
+        // Try to parse JSON but log raw response if it fails
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (err) {
+            console.error('loadReservations: response is not valid JSON', err);
+            console.debug('loadReservations raw response:', text);
+            container.innerHTML = `<div class="col-12 text-center text-muted"><p>Respuesta inesperada del servidor al cargar reservas</p></div>`;
+            return;
+        }
+
+        if (!data.success) {
+            console.debug('loadReservations: server returned success=false', data);
+            container.innerHTML = `<div class="col-12 text-center text-muted"><p>${data.message || 'No se pudieron cargar las reservas'}</p></div>`;
+            return;
+        }
+
+        console.debug('loadReservations: parsed response', data);
+        const reservations = data.reservations || [];
+        console.debug('loadReservations: reservations count =', reservations.length);
+        if (reservations.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted">
+                    <i class="bi bi-calendar-x display-4"></i>
+                    <p class="mt-2">No tienes reservas activas</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = reservations.map(res => {
+            const rideName = res.ride_name || (res.origin + ' → ' + res.destination);
+            const statusBadge = res.status === 'pending' ? 'badge bg-warning' : (res.status === 'accepted' ? 'badge bg-success' : 'badge bg-secondary');
+            const cancelBtn = (res.status === 'pending' || res.status === 'accepted') ? `<button class="btn btn-sm btn-outline-danger ms-2" onclick="cancelReservationAjax(${res.id})">Cancelar</button>` : '';
+
+            return `
+                <div class="col-12">
+                    <div class="card mb-2">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${escapeHtml(rideName)}</h6>
+                                <small class="text-muted">${escapeHtml(res.ride_date)} ${escapeHtml(res.ride_time)} • ${res.seats_requested} asiento(s)</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="${statusBadge}">${escapeHtml(res.status)}</span>
+                                ${cancelBtn}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    })
+    .catch(err => {
+        console.error('Error loading reservations', err);
+        container.innerHTML = `<div class="col-12 text-center text-muted"><p>Error cargando reservas</p></div>`;
+    });
+}
+
+// Cancel reservation via AJAX
+function cancelReservationAjax(reservationId) {
+    if (!confirm('¿Deseas cancelar esta reserva?')) return;
+
+    fetch(`${BASE_URL}/passenger/reservations/${reservationId}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(r => r.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                alert(data.message || 'Reserva cancelada');
+                loadReservations();
+                // Ask map to refresh (in case seats freed)
+                window.dispatchEvent(new Event('mapRefresh'));
+            } else {
+                alert('Error: ' + (data.message || 'No se pudo cancelar la reserva'));
+            }
+        } catch (err) {
+            console.error('cancelReservationAjax: response not JSON', err);
+            console.debug('cancelReservationAjax raw response:', text);
+            alert('Error al cancelar la reserva (respuesta inválida del servidor)');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error al cancelar la reserva');
+    });
 }
 
 function loadHistory() {
