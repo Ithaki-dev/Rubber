@@ -183,20 +183,16 @@ function loadReservations() {
             data = JSON.parse(text);
         } catch (err) {
             console.error('loadReservations: response is not valid JSON', err);
-            console.debug('loadReservations raw response:', text);
             container.innerHTML = `<div class="col-12 text-center text-muted"><p>Respuesta inesperada del servidor al cargar reservas</p></div>`;
             return;
         }
 
         if (!data.success) {
-            console.debug('loadReservations: server returned success=false', data);
             container.innerHTML = `<div class="col-12 text-center text-muted"><p>${data.message || 'No se pudieron cargar las reservas'}</p></div>`;
             return;
         }
 
-        console.debug('loadReservations: parsed response', data);
         const reservations = data.reservations || [];
-        console.debug('loadReservations: reservations count =', reservations.length);
         if (reservations.length === 0) {
             container.innerHTML = `
                 <div class="col-12 text-center text-muted">
@@ -261,7 +257,6 @@ function cancelReservationAjax(reservationId) {
             }
         } catch (err) {
             console.error('cancelReservationAjax: response not JSON', err);
-            console.debug('cancelReservationAjax raw response:', text);
             alert('Error al cancelar la reserva (respuesta inválida del servidor)');
         }
     })
