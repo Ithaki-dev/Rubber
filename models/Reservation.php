@@ -491,8 +491,9 @@ class Reservation {
         }
         
         $seats = $data['seats_requested'] ?? 1;
-        if (!$this->validator->validatePositiveInt($seats) || $seats < 1 || $seats > 4) {
-            $errors[] = 'Cantidad de asientos inválida (1-4)';
+        // For passenger reservations we only allow requesting 1 seat (business rule)
+        if (!$this->validator->validatePositiveInt($seats) || $seats < 1 || $seats > 1) {
+            $errors[] = 'Cantidad de asientos inválida (solo 1 asiento permitido)';
         }
         
         return [
