@@ -146,8 +146,26 @@ class AuthController {
         } else {
             // Log del resultado para ayudar a debugging (no exponer detalles al usuario)
             error_log('Registro fallido: ' . print_r($result, true));
-            Session::setFlash('error', $result['message']);
-            Session::setFlash('old_input', $data);
+            // Guardar el input previo para rellenar el formulario
+            Session::set('old_input', $data);
+
+            // Preparar errores por campo para mostrar inline en el formulario
+            $formErrors = [];
+            $msg = $result['message'] ?? 'Error en el registro';
+            // Detección simple por texto (User::create devuelve mensajes en español)
+            if (stripos($msg, 'email') !== false) {
+                $formErrors['email'] = $msg;
+            }
+            if (stripos($msg, 'cédula') !== false || stripos($msg, 'cedula') !== false) {
+                $formErrors['cedula'] = $msg;
+            }
+            if (empty($formErrors)) {
+                $formErrors['general'] = $msg;
+            }
+
+            Session::set('form_errors', $formErrors);
+            // También mantener una flash general para compatibilidad
+            Session::setFlash('error', $msg);
             redirect('/auth/register');
         }
     }

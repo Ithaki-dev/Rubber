@@ -14,6 +14,14 @@ ob_start();
                         <p class="text-muted">Únete a la comunidad de Carpooling UTN</p>
                     </div>
 
+                    <?php
+                    // Recuperar old input y errores de formulario desde la sesión (si existen)
+                    $old_input = Session::get('old_input', []);
+                    $form_errors = Session::get('form_errors', []);
+                    // Limpiar para que no persistan en la siguiente carga
+                    Session::remove('old_input');
+                    Session::remove('form_errors');
+                    ?>
                     <form action="<?= BASE_URL ?>/auth/register" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         <?php
                         // Generar token CSRF
@@ -33,7 +41,7 @@ ob_start();
                                     class="form-control" 
                                     id="first_name" 
                                     name="first_name" 
-                                    value="<?= htmlspecialchars($_POST['first_name'] ?? '') ?>"
+                                    value="<?= htmlspecialchars($old_input['first_name'] ?? $_POST['first_name'] ?? '') ?>"
                                     required
                                     maxlength="50"
                                 >
@@ -51,7 +59,7 @@ ob_start();
                                     class="form-control" 
                                     id="last_name" 
                                     name="last_name" 
-                                    value="<?= htmlspecialchars($_POST['last_name'] ?? '') ?>"
+                                    value="<?= htmlspecialchars($old_input['last_name'] ?? $_POST['last_name'] ?? '') ?>"
                                     required
                                     maxlength="50"
                                 >
@@ -70,9 +78,12 @@ ob_start();
                                 class="form-control" 
                                 id="email" 
                                 name="email" 
-                                value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                                value="<?= htmlspecialchars($old_input['email'] ?? $_POST['email'] ?? '') ?>"
                                 required
                             >
+                            <?php if (!empty($form_errors['email'])): ?>
+                                <div class="invalid-feedback d-block"><?= htmlspecialchars($form_errors['email']) ?></div>
+                            <?php endif; ?>
                             <div class="form-text">Preferiblemente usa tu correo institucional (@utn.ac.cr)</div>
                             <div class="invalid-feedback">
                                 Por favor ingresa un correo válido.
@@ -89,10 +100,13 @@ ob_start();
                                     class="form-control"
                                     id="cedula"
                                     name="cedula"
-                                    value="<?= htmlspecialchars($_POST['cedula'] ?? '') ?>"
+                                    value="<?= htmlspecialchars($old_input['cedula'] ?? $_POST['cedula'] ?? '') ?>"
                                     required
                                     maxlength="10"
                                 >
+                                <?php if (!empty($form_errors['cedula'])): ?>
+                                    <div class="invalid-feedback d-block"><?= htmlspecialchars($form_errors['cedula']) ?></div>
+                                <?php endif; ?>
                                 <div class="invalid-feedback">
                                     Por favor ingresa tu cédula.
                                 </div>
@@ -107,7 +121,7 @@ ob_start();
                                     class="form-control"
                                     id="birth_date"
                                     name="birth_date"
-                                    value="<?= htmlspecialchars($_POST['birth_date'] ?? '') ?>"
+                                    value="<?= htmlspecialchars($old_input['birth_date'] ?? $_POST['birth_date'] ?? '') ?>"
                                     required
                                 >
                                 <div class="invalid-feedback">
@@ -125,7 +139,7 @@ ob_start();
                                 class="form-control" 
                                 id="phone" 
                                 name="phone" 
-                                value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>"
+                                value="<?= htmlspecialchars($old_input['phone'] ?? $_POST['phone'] ?? '') ?>"
                                 placeholder="8888-8888"
                                 pattern="[0-9]{4}-[0-9]{4}"
                                 required
@@ -134,6 +148,20 @@ ob_start();
                             <div class="invalid-feedback">
                                 Por favor ingresa un teléfono válido (8888-8888).
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="photo" class="form-label">
+                                <i class="bi bi-card-image me-1"></i>Foto de perfil (JPG/PNG)
+                            </label>
+                            <input
+                                type="file"
+                                class="form-control"
+                                id="photo"
+                                name="photo"
+                                accept="image/png, image/jpeg"
+                            >
+                            <div class="form-text">Opcional. Solo JPG o PNG. Máx 5MB.</div>
                         </div>
 
                         <div class="mb-3">
@@ -161,20 +189,6 @@ ob_start();
                             <div class="invalid-feedback">
                                 La contraseña debe tener al menos 8 caracteres.
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="photo" class="form-label">
-                                <i class="bi bi-card-image me-1"></i>Foto de perfil (JPG/PNG)
-                            </label>
-                            <input
-                                type="file"
-                                class="form-control"
-                                id="photo"
-                                name="photo"
-                                accept="image/png, image/jpeg"
-                            >
-                            <div class="form-text">Opcional. Solo JPG o PNG. Máx 5MB.</div>
                         </div>
 
                         <div class="mb-3">
@@ -213,7 +227,7 @@ ob_start();
                                             name="user_type" 
                                             id="passenger" 
                                             value="passenger" 
-                                            <?= ($_POST['user_type'] ?? '') === 'passenger' ? 'checked' : '' ?>
+                                            <?= (($old_input['user_type'] ?? $_POST['user_type'] ?? '') === 'passenger') ? 'checked' : '' ?>
                                             required
                                         >
                                         <label class="form-check-label" for="passenger">
@@ -230,7 +244,7 @@ ob_start();
                                             name="user_type" 
                                             id="driver" 
                                             value="driver"
-                                            <?= ($_POST['user_type'] ?? '') === 'driver' ? 'checked' : '' ?>
+                                            <?= (($old_input['user_type'] ?? $_POST['user_type'] ?? '') === 'driver') ? 'checked' : '' ?>
                                         >
                                         <label class="form-check-label" for="driver">
                                             <i class="bi bi-car-front me-1"></i>Conductor
