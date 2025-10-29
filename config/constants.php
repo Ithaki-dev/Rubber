@@ -18,6 +18,7 @@ if (DEBUG_MODE) {
 
 // URLs base
 define('BASE_URL', 'http://localhost:8080/Rubber/public');
+// define('BASE_URL', 'https://erline-bibliopegic-miss.ngrok-free.dev/Rubber/public');
 define('ASSETS_URL', BASE_URL . '/assets');
 
 // Email del administrador
