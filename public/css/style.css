@@ -371,3 +371,15 @@ footer {
         flex: 0 0 100%;
     }
 }
+
+/* User profile avatar */
+.user-profile {
+    width: 96px;
+    height: 96px;
+    object-fit: cover; /* preserve aspect ratio, crop to fill the box */
+    object-position: center center; /* center the crop */
+    border-radius: 50%; /* make it circular */
+    display: inline-block;
+}
+
+/* If you want to ensure non-distorted full image inside the box, use object-fit: contain; */
