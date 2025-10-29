@@ -107,6 +107,10 @@ class Session {
             'email' => self::get('user_email', ''),
             'phone' => self::get('phone', ''),
             'student_id' => self::get('student_id', ''),
+            // photo_path may be stored under different session keys depending on controller
+            'photo_path' => self::get('user_photo', self::get('photo_path', '')),
+            // legacy short key 'pr' kept for compatibility with older views
+            'pr' => self::get('user_photo', self::get('photo_path', '')),
             'user_type' => self::get('user_type', 'guest')
         ];
     }
