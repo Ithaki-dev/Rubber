@@ -224,13 +224,7 @@ class PassengerController {
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         if ($isAjax) {
             header('Content-Type: application/json');
-            // DEBUG: include passenger_id and count to help client-side diagnostics
-            echo json_encode([
-                'success' => true,
-                'passenger_id' => $passenger_id,
-                'count' => count($reservations),
-                'reservations' => $reservations
-            ]);
+            echo json_encode(['success' => true, 'reservations' => $reservations]);
             return;
         }
 
