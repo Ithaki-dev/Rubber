@@ -107,7 +107,7 @@ ob_start();
 
                     <!-- Reservation modal (accessibility-ready) -->
                     <div class="modal fade" id="reserveModal" tabindex="-1" aria-labelledby="reserveModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-dialog modal-dialog-centered modal-sm">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="reserveModalLabel">Confirmar Reserva</h5>
