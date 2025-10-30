@@ -23,18 +23,6 @@
     let pollTimer = null;
     let lastParams = {};
     let selectedRide = null;
-    // Initialize a single modal instance to reuse across opens (avoid multiple backdrops)
-    let reserveModalInstance = null;
-    const reserveModalEl = document.getElementById('reserveModal');
-    if (reserveModalEl) {
-        reserveModalInstance = new bootstrap.Modal(reserveModalEl, {backdrop: true});
-        // Defensive cleanup on hide: clear selectedRide and remove stray backdrops/class
-        reserveModalEl.addEventListener('hidden.bs.modal', () => {
-            selectedRide = null;
-            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-            document.body.classList.remove('modal-open');
-        });
-    }
 
     function boundsToString(bounds) {
         // Leaflet LatLngBounds: getSouthWest, getNorthEast
@@ -157,14 +145,29 @@
         seatsInput.max = ride.available_seats || 1;
         seatsInput.value = 1;
 
-        // Show the pre-created modal instance (fallback to creating one if missing)
-        if (reserveModalInstance) {
-            reserveModalInstance.show();
-        } else if (reserveModalEl) {
-            // Create a one-off instance if for some reason it wasn't initialized
-            const tmp = new bootstrap.Modal(reserveModalEl, {backdrop: true});
-            tmp.show();
+        const reserveModalEl = document.getElementById('reserveModal');
+        // Reuse existing Modal instance if present, otherwise create one
+        let reserveModal = bootstrap.Modal.getInstance(reserveModalEl);
+        if (!reserveModal) {
+            reserveModal = new bootstrap.Modal(reserveModalEl, {backdrop: true});
         }
+
+        // Ensure we clean up leftover backdrops if the modal is hidden unexpectedly
+        // Attach once (idempotent) to avoid multiple handlers
+        if (!reserveModalEl._reserveHiddenBound) {
+            reserveModalEl.addEventListener('hidden.bs.modal', function() {
+                // Remove any stray backdrops and modal-open class
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                // Dispose modal instance to avoid stale state
+                const inst = bootstrap.Modal.getInstance(reserveModalEl);
+                if (inst) inst.dispose();
+                reserveModalEl._reserveHiddenBound = false;
+            });
+            reserveModalEl._reserveHiddenBound = true;
+        }
+
+        reserveModal.show();
 
         document.getElementById('confirmReserveBtn').onclick = confirmReserve;
     }
