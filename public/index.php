@@ -172,6 +172,35 @@ try {
 
             exit;
         }
+        // API for driver dashboard (driver-facing)
+        elseif ($method === 'driver') {
+            require_once __DIR__ . '/../controllers/DriverController.php';
+            $driverController = new DriverController();
+
+            $apiAction = $params[0] ?? '';
+            $apiId = $params[1] ?? '';
+
+            if ($httpMethod === 'GET') {
+                switch ($apiAction) {
+                    case 'stats':
+                        $driverController->apiStats();
+                        break;
+                    case 'rides':
+                        $driverController->apiRides();
+                        break;
+                    case 'vehicles':
+                        $driverController->apiVehicles();
+                        break;
+                    default:
+                        echo json_encode(['success' => false, 'message' => 'API driver endpoint not found']);
+                        break;
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Método no permitido para esta API']);
+            }
+
+            exit;
+        }
     }
     
     // ==========================================
@@ -389,10 +418,16 @@ try {
             // VEHÍCULOS
             // ==========================================
             case 'vehicles':
+                // POST /driver/vehicles - Crear
                 if ($httpMethod === 'POST' && !isset($params[0])) {
-                    // POST /driver/vehicles - Crear
                     $driverController->storeVehicle();
-                } elseif (isset($params[0])) {
+                }
+                // GET /driver/vehicles/create
+                elseif (isset($params[0]) && $params[0] === 'create') {
+                    $driverController->createVehicle();
+                }
+                // Actions for a specific vehicle id: /driver/vehicles/{id}[/{action}]
+                elseif (isset($params[0])) {
                     if (isset($params[1])) {
                         // Acciones específicas
                         switch ($params[1]) {
@@ -415,11 +450,11 @@ try {
                         // POST /driver/vehicles/{id} - Actualizar
                         if ($httpMethod === 'POST') {
                             $driverController->updateVehicle($params[0]);
+                        } else {
+                            // Fallback: show vehicles list if GET without action
+                            $driverController->vehicles();
                         }
                     }
-                } elseif (isset($url[2]) && $url[2] === 'create') {
-                    // GET /driver/vehicles/create
-                    $driverController->createVehicle();
                 } else {
                     // GET /driver/vehicles - Listar
                     $driverController->vehicles();
@@ -430,10 +465,16 @@ try {
             // VIAJES
             // ==========================================
             case 'rides':
+                // POST /driver/rides - Crear
                 if ($httpMethod === 'POST' && !isset($params[0])) {
-                    // POST /driver/rides - Crear
                     $driverController->storeRide();
-                } elseif (isset($params[0])) {
+                }
+                // GET /driver/rides/create
+                elseif (isset($params[0]) && $params[0] === 'create') {
+                    $driverController->createRide();
+                }
+                // Actions for a specific ride id: /driver/rides/{id}[/{action}]
+                elseif (isset($params[0])) {
                     if (isset($params[1])) {
                         // Acciones específicas
                         switch ($params[1]) {
@@ -461,9 +502,6 @@ try {
                             $driverController->showRide($params[0]);
                         }
                     }
-                } elseif (isset($url[2]) && $url[2] === 'create') {
-                    // GET /driver/rides/create
-                    $driverController->createRide();
                 } else {
                     // GET /driver/rides - Listar
                     $driverController->rides();
