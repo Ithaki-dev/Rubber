@@ -258,6 +258,22 @@
     box-shadow: var(--shadow-lg);
 }
 
+/* Small modal variant (use by adding class "modal-sm" on the .modal-dialog) */
+.modal-dialog.modal-sm {
+    max-width: 420px;
+    margin: 1.75rem auto;
+}
+
+@media (max-width: 576px) {
+    .modal-dialog.modal-sm {
+        max-width: 95%;
+        margin: 0.5rem auto;
+    }
+    .modal-dialog.modal-sm .modal-content {
+        padding: 16px;
+    }
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
