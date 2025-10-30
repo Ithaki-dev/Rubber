@@ -27,6 +27,62 @@ class DriverController {
         // Verificar que el usuario es chofer
         $this->requireDriverRole();
     }
+
+    /**
+     * API: Obtener estadísticas del driver (JSON)
+     * Ruta: GET /api/driver/stats
+     */
+    public function apiStats() {
+        header('Content-Type: application/json');
+        try {
+            $driver_id = Session::get('user_id');
+            $stats = $this->statistics->getDriverStatistics($driver_id);
+            echo json_encode(['success' => true, 'stats' => $stats]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error obteniendo estadísticas', 'detail' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * API: Listar viajes del driver (JSON)
+     * Ruta: GET /api/driver/rides?status=upcoming|completed
+     */
+    public function apiRides() {
+        header('Content-Type: application/json');
+        try {
+            $driver_id = Session::get('user_id');
+            $status = sanitize($_GET['status'] ?? 'all');
+            $filters = [];
+            if ($status === 'upcoming') {
+                $filters['future_only'] = true;
+            } elseif ($status === 'completed') {
+                $filters['past_only'] = true;
+            }
+
+            $rides = $this->rideModel->getByDriver($driver_id, $filters);
+            echo json_encode(['success' => true, 'rides' => $rides]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error en la consulta de viajes', 'detail' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * API: Listar vehículos del driver (JSON)
+     * Ruta: GET /api/driver/vehicles
+     */
+    public function apiVehicles() {
+        header('Content-Type: application/json');
+        try {
+            $driver_id = Session::get('user_id');
+            $vehicles = $this->vehicleModel->getByDriver($driver_id, true);
+            echo json_encode(['success' => true, 'vehicles' => $vehicles]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error obteniendo vehículos', 'detail' => $e->getMessage()]);
+        }
+    }
     
     /**
      * Dashboard del chofer
@@ -60,15 +116,16 @@ class DriverController {
     public function vehicles() {
         $driver_id = Session::get('user_id');
         $vehicles = $this->vehicleModel->getByDriver($driver_id);
-        
-        require_once __DIR__ . '/../views/driver/vehicles/index.php';
+        // Vehicles are displayed in the driver dashboard. Redirect there
+        redirect('/driver/dashboard?open_vehicles=1');
     }
     
     /**
      * Mostrar formulario para crear vehículo
      */
     public function createVehicle() {
-        require_once __DIR__ . '/../views/driver/vehicles/create.php';
+        // Use dashboard modal for adding vehicles
+        redirect('/driver/dashboard?open_add_vehicle=1');
     }
     
     /**
@@ -106,14 +163,27 @@ class DriverController {
         }
         
         $result = $this->vehicleModel->create($data);
-        
+
+        // Detect AJAX
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message'], 'vehicle' => $result['vehicle'] ?? null]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
-            redirect('/driver/vehicles');
+            redirect('/driver/dashboard');
         } else {
             Session::setFlash('error', $result['message']);
             Session::setFlash('old_input', $data);
-            redirect('/driver/vehicles/create');
+            redirect('/driver/dashboard?open_add_vehicle=1');
         }
     }
     
@@ -131,7 +201,8 @@ class DriverController {
             return;
         }
         
-        require_once __DIR__ . '/../views/driver/vehicles/edit.php';
+        // Use dashboard modal/edit flow
+        redirect('/driver/dashboard?edit_vehicle=' . (int)$id);
     }
     
     /**
@@ -179,10 +250,10 @@ class DriverController {
         
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
-            redirect('/driver/vehicles');
+            redirect('/driver/dashboard');
         } else {
             Session::setFlash('error', $result['message']);
-            redirect('/driver/vehicles/edit/' . $id);
+            redirect('/driver/dashboard?edit_vehicle=' . (int)$id);
         }
     }
     
@@ -201,7 +272,24 @@ class DriverController {
         }
         
         $result = $this->vehicleModel->delete($id);
-        
+
+        // If AJAX request, return JSON
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                // Eliminar foto si existe
+                if (!empty($vehicle['photo_path'])) {
+                    deleteFile($vehicle['photo_path']);
+                }
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             // Eliminar foto si existe
             if (!empty($vehicle['photo_path'])) {
@@ -211,8 +299,8 @@ class DriverController {
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
-        redirect('/driver/vehicles');
+
+        redirect('/driver/dashboard');
     }
     
     /**
@@ -237,8 +325,8 @@ class DriverController {
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
-        redirect('/driver/vehicles');
+
+        redirect('/driver/dashboard');
     }
     
     // ==========================================
@@ -260,8 +348,10 @@ class DriverController {
         }
         
         $rides = $this->rideModel->getByDriver($driver_id, $filters);
-        
-        require_once __DIR__ . '/../views/driver/rides/index.php';
+
+        // Render rides via dashboard (SPA-like). Redirect to dashboard where JS
+        // will fetch rides through the API and render them.
+        redirect('/driver/dashboard?open_rides=1');
     }
     
     /**
@@ -278,7 +368,10 @@ class DriverController {
             return;
         }
         
-        require_once __DIR__ . '/../views/driver/rides/create.php';
+        // Instead of rendering a separate create page, redirect to the driver dashboard
+        // which contains the Create Ride modal. We add a query flag so the dashboard
+        // frontend opens the modal automatically.
+        redirect('/driver/dashboard?open_create=1');
     }
     
     /**
@@ -320,14 +413,31 @@ class DriverController {
         }
         
         $result = $this->rideModel->create($data);
-        
+
+        // Support AJAX requests (SPA-like) — return JSON if requested via X-Requested-With
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message'], 'ride_id' => $result['ride_id'] ?? null]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
             redirect('/driver/rides');
         } else {
+            // Store error message and old input correctly in session so the dashboard
+            // can show the error and repopulate the form. Previously old_input was
+            // incorrectly stored using setFlash which overwrote the flash payload.
             Session::setFlash('error', $result['message']);
-            Session::setFlash('old_input', $data);
-            redirect('/driver/rides/create');
+            Session::set('old_input', $data);
+            // Redirect directly to the dashboard create modal flag (avoid extra redirect)
+            redirect('/driver/dashboard?open_create=1');
         }
     }
     
@@ -345,10 +455,11 @@ class DriverController {
             return;
         }
         
-        // Obtener reservas del viaje
+        // Obtener reservas del viaje (used by JS if needed)
         $reservations = $this->rideModel->getReservations($id);
-        
-        require_once __DIR__ . '/../views/driver/rides/show.php';
+
+        // Show ride details in dashboard modal instead of separate view
+        redirect('/driver/dashboard?show_ride=' . (int)$id);
     }
     
     /**
@@ -366,8 +477,9 @@ class DriverController {
         }
         
         $vehicles = $this->vehicleModel->getByDriver($driver_id, true);
-        
-        require_once __DIR__ . '/../views/driver/rides/edit.php';
+
+        // Edit via dashboard modal
+        redirect('/driver/dashboard?edit_ride=' . (int)$id);
     }
     
     /**
@@ -416,10 +528,10 @@ class DriverController {
         
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
-            redirect('/driver/rides');
+            redirect('/driver/dashboard');
         } else {
             Session::setFlash('error', $result['message']);
-            redirect('/driver/rides/edit/' . $id);
+            redirect('/driver/dashboard?edit_ride=' . (int)$id);
         }
     }
     
@@ -438,14 +550,27 @@ class DriverController {
         }
         
         $result = $this->rideModel->delete($id);
-        
+
+        // If AJAX request, return JSON
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
-        redirect('/driver/rides');
+
+        redirect('/driver/dashboard');
     }
     
     /**
@@ -470,8 +595,8 @@ class DriverController {
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
-        redirect('/driver/rides');
+
+        redirect('/driver/dashboard');
     }
     
     // ==========================================
@@ -491,8 +616,16 @@ class DriverController {
         }
         
         $reservations = $this->reservationModel->getByDriver($driver_id, $filters);
-        
-        require_once __DIR__ . '/../views/driver/reservations/index.php';
+        // If AJAX request, return JSON (used by dashboard JS to populate reservations)
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'reservations' => $reservations]);
+            return;
+        }
+
+        // Non-AJAX: use dashboard reservations section/modal
+        redirect('/driver/dashboard?open_reservations=1');
     }
     
     /**
@@ -501,13 +634,25 @@ class DriverController {
     public function acceptReservation($id) {
         $driver_id = Session::get('user_id');
         $result = $this->reservationModel->accept($id, $driver_id);
-        
+        // If AJAX call, return JSON instead of redirecting
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
+
         // Redirigir según el origen
         $redirect = sanitize($_GET['redirect'] ?? 'list');
         if ($redirect === 'ride') {
@@ -524,13 +669,25 @@ class DriverController {
     public function rejectReservation($id) {
         $driver_id = Session::get('user_id');
         $result = $this->reservationModel->reject($id, $driver_id);
-        
+        // If AJAX call, return JSON instead of redirecting
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($result['success']) {
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+            }
+            return;
+        }
+
         if ($result['success']) {
             Session::setFlash('success', $result['message']);
         } else {
             Session::setFlash('error', $result['message']);
         }
-        
+
         // Redirigir según el origen
         $redirect = sanitize($_GET['redirect'] ?? 'list');
         if ($redirect === 'ride') {
