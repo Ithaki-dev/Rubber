@@ -24,6 +24,7 @@ SELECT
   r.departure_lng,
   r.arrival_lat,
   r.arrival_lng,
+  r.driver_id,
 
   -- Driver and vehicle info
   d.first_name AS driver_first_name,
