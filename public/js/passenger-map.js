@@ -145,7 +145,28 @@
         seatsInput.max = ride.available_seats || 1;
         seatsInput.value = 1;
 
-        const reserveModal = new bootstrap.Modal(document.getElementById('reserveModal'));
+        const reserveModalEl = document.getElementById('reserveModal');
+        // Reuse existing Modal instance if present, otherwise create one
+        let reserveModal = bootstrap.Modal.getInstance(reserveModalEl);
+        if (!reserveModal) {
+            reserveModal = new bootstrap.Modal(reserveModalEl, {backdrop: true});
+        }
+
+        // Ensure we clean up leftover backdrops if the modal is hidden unexpectedly
+        // Attach once (idempotent) to avoid multiple handlers
+        if (!reserveModalEl._reserveHiddenBound) {
+            reserveModalEl.addEventListener('hidden.bs.modal', function() {
+                // Remove any stray backdrops and modal-open class
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                // Dispose modal instance to avoid stale state
+                const inst = bootstrap.Modal.getInstance(reserveModalEl);
+                if (inst) inst.dispose();
+                reserveModalEl._reserveHiddenBound = false;
+            });
+            reserveModalEl._reserveHiddenBound = true;
+        }
+
         reserveModal.show();
 
         document.getElementById('confirmReserveBtn').onclick = confirmReserve;
