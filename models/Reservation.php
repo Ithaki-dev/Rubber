@@ -174,21 +174,27 @@ class Reservation {
      * @return array Lista de reservas
      */
     public function getByDriver($driver_id, $filters = []) {
-        $sql = "SELECT * FROM v_reservations_complete WHERE driver_id = ?";
+        // Some DB instances may have v_reservations_complete without a driver_id column
+        // (for example if the view was created with explicit columns). To be robust
+        // we join the rides table and filter by r.driver_id instead of relying on
+        // driver_id existing directly in the view.
+        $sql = "SELECT vrc.* FROM v_reservations_complete vrc
+                INNER JOIN rides r ON vrc.ride_id = r.id
+                WHERE r.driver_id = ?";
         $params = [$driver_id];
-        
+
         if (!empty($filters['status'])) {
-            $sql .= " AND status = ?";
+            $sql .= " AND vrc.status = ?";
             $params[] = $filters['status'];
         }
-        
+
         if (!empty($filters['ride_id'])) {
-            $sql .= " AND ride_id = ?";
+            $sql .= " AND vrc.ride_id = ?";
             $params[] = $filters['ride_id'];
         }
-        
-        $sql .= " ORDER BY created_at DESC";
-        
+
+        $sql .= " ORDER BY vrc.created_at DESC";
+
         $stmt = $this->db->query($sql, $params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -342,39 +348,48 @@ class Reservation {
      * @return array Lista de reservas
      */
     public function getAll($filters = []) {
-        $sql = "SELECT * FROM v_reservations_complete WHERE 1=1";
+        // Use view but join rides when filtering by driver to avoid relying on
+        // a driver_id column existing in the view.
+        $sql = "SELECT vrc.* FROM v_reservations_complete vrc";
         $params = [];
-        
+
+        // If filtering by driver, we need to join rides
+        if (!empty($filters['driver_id'])) {
+            $sql .= " INNER JOIN rides r ON vrc.ride_id = r.id";
+        }
+
+        $sql .= " WHERE 1=1";
+
         if (!empty($filters['status'])) {
-            $sql .= " AND status = ?";
+            $sql .= " AND vrc.status = ?";
             $params[] = $filters['status'];
         }
-        
+
         if (!empty($filters['passenger_id'])) {
-            $sql .= " AND passenger_id = ?";
+            $sql .= " AND vrc.passenger_id = ?";
             $params[] = $filters['passenger_id'];
         }
-        
+
         if (!empty($filters['driver_id'])) {
-            $sql .= " AND driver_id = ?";
+            $sql .= " AND r.driver_id = ?";
             $params[] = $filters['driver_id'];
         }
-        
+
         if (!empty($filters['ride_id'])) {
-            $sql .= " AND ride_id = ?";
+            $sql .= " AND vrc.ride_id = ?";
             $params[] = $filters['ride_id'];
         }
-        
+
         if (!empty($filters['search'])) {
-            $sql .= " AND (passenger_first_name LIKE ? OR passenger_last_name LIKE ? OR ride_name LIKE ?)";
+            $sql .= " AND (vrc.passenger_first_name LIKE ? OR vrc.passenger_last_name LIKE ? OR vrc.ride_name LIKE ?)";
             $search = '%' . $filters['search'] . '%';
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
         }
-        
-        $sql .= " ORDER BY created_at DESC";
-        
+
+        $sql .= " ORDER BY vrc.created_at DESC";
+
         $stmt = $this->db->query($sql, $params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
