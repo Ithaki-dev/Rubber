@@ -1,149 +1,134 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carpooling UTN - Home</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            background: white;
-            padding: 3rem;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 800px;
-            width: 90%;
-        }
-        h1 {
-            color: #667eea;
-            margin-bottom: 1rem;
-            font-size: 2.5rem;
-        }
-        h2 {
-            color: #764ba2;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-        }
-        p {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 1rem;
-        }
-        .success {
-            background: #d4edda;
-            border: 2px solid #28a745;
-            color: #155724;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 2rem 0;
-        }
-        .routes-list {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        .route-link {
-            display: block;
-            padding: 0.8rem;
-            margin: 0.5rem 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            color: #667eea;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-        .route-link:hover {
-            background: #667eea;
-            color: white;
-            transform: translateX(5px);
-        }
-        .info {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
-            padding: 1rem;
-            margin: 1rem 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚗 Carpooling UTN</h1>
-        
-        <div class="success">
-            <strong>✅ ¡Sistema de Rutas Funcionando!</strong><br>
-            El router está correctamente configurado y procesando solicitudes.
+<?php
+$pageTitle = 'Carpooling UTN - Buscar viajes';
+ob_start();
+?>
+
+<style>
+    #map { height: 80vh; width: 100%; }
+    .map-container { position: relative; }
+    .rides-panel {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(255,255,255,0.95);
+        border-radius: 8px;
+        padding: 12px;
+        width: 320px;
+        max-height: 75vh;
+        overflow: auto;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+        z-index: 1000;
+    }
+    .ride-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+    .ride-item:last-child { border-bottom: none; }
+    .ride-title { font-weight: 600; color: #333; }
+    .ride-meta { color: #666; font-size: 0.9rem; }
+    .btn-reserve { margin-top: 6px; }
+</style>
+
+<div class="map-container">
+    <div id="map"></div>
+
+    <div class="rides-panel">
+        <h5>Viajes disponibles</h5>
+        <div id="ridesList">Cargando viajes...</div>
+        <div class="mt-2 text-end">
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadAvailableRides()">Actualizar</button>
         </div>
-        
-        <p>
-            Bienvenido al sistema de carpooling de la Universidad Tecnica Nacional. 
-            Comparte viajes, ahorra dinero y contribuye al medio ambiente.
-        </p>
-        
-        <div class="info">
-            <strong>🔧 Estado del Sistema:</strong><br>
-            • Router: Activo<br>
-            • Base de Datos: Conectada<br>
-            • Controladores: Cargados<br>
-            • Modelos: Disponibles
-        </div>
-        
-        <h2>🧪 Pruebas de Rutas</h2>
-        <div class="routes-list">
-            <a href="<?= BASE_URL ?>/auth/login" class="route-link">
-                📝 Login (/auth/login)
-            </a>
-            <a href="<?= BASE_URL ?>/auth/register" class="route-link">
-                ✍️ Registro (/auth/register)
-            </a>
-            <a href="<?= BASE_URL ?>/passenger/dashboard" class="route-link">
-                👤 Dashboard Pasajero (/passenger/dashboard)
-            </a>
-            <a href="<?= BASE_URL ?>/driver/dashboard" class="route-link">
-                🚙 Dashboard Chofer (/driver/dashboard)
-            </a>
-            <a href="<?= BASE_URL ?>/admin/dashboard" class="route-link">
-                👨‍💼 Dashboard Admin (/admin/dashboard)
-            </a>
-            <a href="<?= BASE_URL ?>/about" class="route-link">
-                ℹ️ Acerca de (/about)
-            </a>
-            <a href="<?= BASE_URL ?>/contact" class="route-link">
-                📧 Contacto (/contact)
-            </a>
-            <a href="<?= BASE_URL ?>/ruta-invalida" class="route-link">
-                ❌ Prueba 404 (/ruta-invalida)
-            </a>
-        </div>
-        
-        <h2>📋 Rutas Implementadas</h2>
-        <p>
-            El sistema cuenta con <strong>61 rutas</strong> distribuidas en 5 controladores:
-        </p>
-        <ul style="margin-left: 2rem; color: #555; line-height: 2;">
-            <li><strong>HomeController:</strong> 7 rutas públicas</li>
-            <li><strong>AuthController:</strong> 8 rutas de autenticación</li>
-            <li><strong>PassengerController:</strong> 8 rutas para pasajeros</li>
-            <li><strong>DriverController:</strong> 20 rutas para choferes</li>
-            <li><strong>AdminController:</strong> 18 rutas de administración</li>
-        </ul>
-        
-        <p style="margin-top: 2rem; text-align: center; color: #888;">
-            <small>ISW-613 - Universidad Tecnica Nacional</small>
-        </p>
     </div>
-</body>
-</html>
+</div>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    const USER_LOGGED = <?= Session::isLoggedIn() ? 'true' : 'false' ?>;
+
+    let map, markersLayer;
+
+    function initMap(){
+        map = L.map('map').setView([9.935, -84.087], 9); // Costa Rica approx
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        markersLayer = L.layerGroup().addTo(map);
+        loadAvailableRides();
+    }
+
+    function renderRideCard(ride){
+        const dep = ride.departure_location || '';
+        const arr = ride.arrival_location || '';
+        const date = ride.ride_date || '';
+        const time = ride.ride_time || '';
+        const price = ride.cost_per_seat || ride.price_per_seat || '0';
+        const seats = ride.available_seats ?? ride.total_seats ?? 0;
+
+        const div = document.createElement('div');
+        div.className = 'ride-item';
+        div.innerHTML = `
+            <div class="ride-title">${escapeHtml(ride.ride_name || (dep + ' → ' + arr))}</div>
+            <div class="ride-meta">${escapeHtml(dep)} → ${escapeHtml(arr)} ${escapeHtml(date)} ${escapeHtml(time)} • ₡${escapeHtml(String(price))} • ${escapeHtml(String(seats))} asientos</div>
+        `;
+
+        const btn = document.createElement('div');
+        if (USER_LOGGED) {
+            btn.innerHTML = `<form method="POST" action="${BASE_URL}/passenger/reservations" onsubmit="return confirm('Confirmar reserva?');">
+                <input type="hidden" name="ride_id" value="${escapeHtml(String(ride.id))}" />
+                <input type="hidden" name="seats_requested" value="1" />
+                <button class="btn btn-sm btn-primary btn-reserve">Reservar</button>
+            </form>`;
+        } else {
+            btn.innerHTML = `<div class="text-muted"></div>`;
+        }
+
+        div.appendChild(btn);
+        return div;
+    }
+
+    function escapeHtml(s){
+        if (!s) return '';
+        return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]; });
+    }
+
+    function loadAvailableRides(){
+        const list = document.getElementById('ridesList');
+        list.innerHTML = '<div class="text-center py-3">Cargando...</div>';
+        fetch(`${BASE_URL}/api/rides`)
+            .then(r=>r.json())
+            .then(data => {
+                markersLayer.clearLayers();
+                list.innerHTML = '';
+                if (data.success && data.rides && data.rides.length){
+                    data.rides.forEach(ride => {
+                        // add marker if coords available
+                        const dlat = ride.departure_lat; const dlng = ride.departure_lng;
+                        if (dlat && dlng) {
+                            const m = L.marker([parseFloat(dlat), parseFloat(dlng)]).addTo(markersLayer);
+                            m.bindPopup(`<strong>${escapeHtml(ride.ride_name || '')}</strong><br>${escapeHtml(ride.departure_location || '')} → ${escapeHtml(ride.arrival_location || '')}`);
+                        }
+                        list.appendChild(renderRideCard(ride));
+                    });
+                    // fit bounds if markers exist
+                    const group = markersLayer.getLayers();
+                    if (group.length) {
+                        const g = L.featureGroup(group);
+                        map.fitBounds(g.getBounds().pad(0.25));
+                    }
+                } else {
+                    list.innerHTML = '<div class="text-center text-muted py-3">No hay viajes disponibles</div>';
+                }
+            }).catch(err => {
+                console.error('Error loading rides', err);
+                list.innerHTML = '<div class="text-danger py-3">Error cargando viajes</div>';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/base.php';
+?>
