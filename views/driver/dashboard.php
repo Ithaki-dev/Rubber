@@ -9,7 +9,24 @@ ob_start();
         <div class="col-lg-3 col-md-4 bg-light border-end vh-100 position-sticky top-0 pt-5">
             <div class="p-3">
                 <div class="text-center mb-4">
-                    <i class="bi bi-car-front-fill display-4 text-primary"></i>
+                    <?php
+                    $user = Session::getCurrentUser();
+                    // Try common keys used in the app for the uploaded photo                   
+                    $profileImg = $user['photo_path'] ?? $user['photo'] ?? $user['pr'] ?? '';
+                    ?>
+                    <?php if (!empty($profileImg)): ?>
+                        <?php
+                            // Build a full URL for the profile image. If $profileImg is already absolute (http...), use it as-is.
+                            if (preg_match('#^https?://#i', $profileImg)) {
+                                $imgUrl = $profileImg;
+                            } else {
+                                $imgUrl = rtrim(BASE_URL, '/') . '/' . ltrim($profileImg, '/');
+                            }
+                        ?>
+                        <img src="<?= htmlspecialchars($imgUrl) ?>" alt="Avatar de <?= htmlspecialchars($user['first_name'] ?? '') ?>" class="user-profile rounded-circle" width="96" height="96">
+                    <?php else: ?>
+                        <i class="bi bi-person-circle display-4 text-primary"></i>
+                    <?php endif; ?>
                     <h5 class="mt-2"><?php echo htmlspecialchars(Session::getCurrentUser()['first_name'] ?? 'Conductor') ?>!</h5>
                     <small class="text-muted">Conductor</small>
                 </div>
