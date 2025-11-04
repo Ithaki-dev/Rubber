@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitudes pendientes</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #0d6efd; color: white; padding: 12px; border-radius: 6px 6px 0 0; }
+    .content { border: 1px solid #eee; padding: 16px; border-top: none; }
+    .footer { font-size: 0.9rem; color: #666; margin-top: 12px; }
+    pre { background:#f8f9fa; padding:10px; border-radius:4px; white-space:pre-wrap; word-wrap:break-word; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Solicitudes de reserva pendientes</h2>
+    </div>
+    <div class="content">
+      <p>Hola {{DRIVER_NAME}},</p>
+      <p>Hay nuevas solicitudes de reserva pendientes que superan el tiempo configurado. A continuación encontrarás el resumen de las reservas pendientes:</p>
+
+      <pre>{{RESERVATIONS_LIST}}</pre>
+
+      <p class="footer">Puedes ver las solicitudes y gestionarlas en tu panel de conductor: <a href="{{DASHBOARD_URL}}">Ir al Panel</a></p>
+    </div>
+  </div>
+</body>
+</html>
